@@ -31,22 +31,8 @@
       ]
     }
   },
-  "files": [],
-  "references": [
-    {
-      "path": "./apps/on-demand-delivery-tracking/tsconfig.app.json"
-    },
-    {
-      "path": "./apps/api-gateway/tsconfig.app.json"
-    },
-    {
-      "path": "./apps/order-service/tsconfig.app.json"
-    },
-    {
-      "path": "./apps/tracking-service/tsconfig.app.json"
-    },
-    {
-      "path": "./apps/notification-service/tsconfig.app.json"
-    }
+  "include": [
+    "apps/**/*",
+    "libs/**/*"
   ]
 }

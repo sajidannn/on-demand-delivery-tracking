@@ -1,9 +1,10 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { OrderServiceController } from './order-service.controller.js';
 import { OrderServiceService } from './order-service.service.js';
 
 @Module({
-  imports: [],
+  imports: [ConfigModule.forRoot({ isGlobal: true })],
   controllers: [OrderServiceController],
   providers: [OrderServiceService],
 })

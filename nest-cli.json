@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json.schemastore.org/nest-cli",
+  "collection": "@nestjs/schematics",
+  "sourceRoot": "apps/on-demand-delivery-tracking/src",
+  "compilerOptions": {
+    "deleteOutDir": true,
+    "builder": "rspack",
+    "tsConfigPath": "apps/on-demand-delivery-tracking/tsconfig.app.json"
+  },
+  "monorepo": true,
+  "root": "apps/on-demand-delivery-tracking",
+  "projects": {
+    "api-gateway": {
+      "type": "application",
+      "root": "apps/api-gateway",
+      "entryFile": "main",
+      "sourceRoot": "apps/api-gateway/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/api-gateway/tsconfig.app.json"
+      }
+    },
+    "common": {
+      "type": "library",
+      "root": "libs/common",
+      "entryFile": "index",
+      "sourceRoot": "libs/common/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/common/tsconfig.lib.json"
+      }
+    },
+    "notification-service": {
+      "type": "application",
+      "root": "apps/notification-service",
+      "entryFile": "main",
+      "sourceRoot": "apps/notification-service/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/notification-service/tsconfig.app.json"
+      }
+    },
+    "on-demand-delivery-tracking": {
+      "type": "application",
+      "root": "apps/on-demand-delivery-tracking",
+      "entryFile": "main",
+      "sourceRoot": "apps/on-demand-delivery-tracking/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/on-demand-delivery-tracking/tsconfig.app.json"
+      }
+    },
+    "order-service": {
+      "type": "application",
+      "root": "apps/order-service",
+      "entryFile": "main",
+      "sourceRoot": "apps/order-service/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/order-service/tsconfig.app.json"
+      }
+    },
+    "tracking-service": {
+      "type": "application",
+      "root": "apps/tracking-service",
+      "entryFile": "main",
+      "sourceRoot": "apps/tracking-service/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/tracking-service/tsconfig.app.json"
+      }
+    }
+  }
+}

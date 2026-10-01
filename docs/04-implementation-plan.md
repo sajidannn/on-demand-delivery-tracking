@@ -20,10 +20,10 @@ Tiap task selesai bila memenuhi _Definition of Done_ di `AGENTS.md`.
 - [x] [W] Prisma di auth-service: schema, migrate, client output custom
 - [x] [W] `trustedDependencies` (`bcrypt`, `prisma`) di `package.json` agar postinstall berjalan di Bun
 - [x] [W] Auth TCP: `auth.register`, `auth.login`, `auth.validate_token`, `auth.me` (bcrypt + JWT)
-- [ ] [W] Gateway: ClientsModule TCP ke Auth, `AuthController` (`/auth/*`)
-- [ ] [W] `JwtAuthGuard` (memanggil `auth.validate_token`) + `@Roles()` + `RolesGuard`
-- [ ] [W] Global `ValidationPipe` + exception filter RPC→HTTP
-- [ ] [W] Swagger setup `/docs` + Bearer auth + dokumentasi `/auth/*`
+- [x] [W] Gateway: ClientsModule TCP ke Auth, `AuthController` (`/auth/*`)
+- [x] [W] `JwtAuthGuard` (memanggil `auth.validate_token`) + `@Roles()` + `RolesGuard`
+- [x] [W] Global `ValidationPipe` + exception filter RPC→HTTP
+- [x] [W] Swagger setup `/docs` + Bearer auth + dokumentasi `/auth/*`
 
 **Selesai bila:** register → login → `GET /auth/me` jalan; tanpa token 401; muncul di `/docs`.
 

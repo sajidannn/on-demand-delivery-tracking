@@ -4,3 +4,4 @@ export * from './events/index.js';
 export * from './constants/index.js';
 export * from './dto/register.dto.js';
 export * from './dto/login.dto.js';
+export * from './filters/rpc-exception.filter.js';

@@ -29,11 +29,11 @@ Tiap task selesai bila memenuhi _Definition of Done_ di `AGENTS.md`.
 
 ## Hari 3 — Location Service (PostGIS + gRPC)
 
-- [ ] [W] `location.proto` + konfigurasi gRPC server
-- [ ] [W] TypeORM koneksi ke `location_db`, migrasi tabel + GiST index
-- [ ] [W] Repository dengan raw SQL: upsert, find nearest
-- [ ] [W] gRPC `SetDriverAvailability`, `FindNearestDrivers`
-- [ ] [W] Gateway: gRPC client, `POST /drivers/online|offline` (+ Swagger)
+- [x] [W] `location.proto` + konfigurasi gRPC server
+- [x] [W] TypeORM koneksi ke `location_db`, migrasi tabel + GiST index
+- [x] [W] Repository dengan raw SQL: upsert, find nearest
+- [x] [W] gRPC `SetDriverAvailability`, `FindNearestDrivers`
+- [x] [W] Gateway: gRPC client, `POST /drivers/online|offline` (+ Swagger)
 - [ ] [N] Seed 3–5 driver dummy untuk tes
 
 **Selesai bila:** `grpcurl` mengembalikan driver terdekat yang urutannya benar.

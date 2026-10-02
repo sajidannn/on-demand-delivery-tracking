@@ -15,8 +15,8 @@ import { AuthController } from './auth.controller.js';
         useFactory: (config: ConfigService) => ({
           transport: Transport.TCP,
           options: {
-            host: config.get('AUTH_HOST') || '0.0.0.0',
-            port: Number(config.get('AUTH_PORT')) || 4001,
+            host: config.get('AUTH_HOST', 'localhost'),
+            port: config.get<number>('AUTH_PORT', 4001),
           },
         }),
       },

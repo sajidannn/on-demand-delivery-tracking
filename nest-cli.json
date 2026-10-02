@@ -46,7 +46,10 @@
       "entryFile": "main",
       "sourceRoot": "apps/location-service/src",
       "compilerOptions": {
-        "tsConfigPath": "apps/location-service/tsconfig.app.json"
+        "tsConfigPath": "apps/location-service/tsconfig.app.json",
+        "assets": [
+          { "include": "../../../libs/common/src/proto/*.proto", "outDir": "./dist/apps/location-service", "watchAssets": true }
+        ]
       }
     },
     "notification-service": {

@@ -4,7 +4,6 @@ import { AuthServiceService } from './auth-service.service.js';
 import { PrismaService } from './prisma/prisma.service.js';
 import { JwtService } from '@nestjs/jwt';
 import { vi } from 'vitest';
-import { PATTERNS } from '@app/common';
 
 describe('AuthServiceController', () => {
   let authServiceController: AuthServiceController;

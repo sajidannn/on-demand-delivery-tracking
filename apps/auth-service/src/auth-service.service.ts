@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { RpcException } from '@nestjs/microservices';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
@@ -7,10 +7,12 @@ import { RegisterDto, LoginDto, Role as CommonRole } from '@app/common';
 
 @Injectable()
 export class AuthServiceService {
+  private readonly logger = new Logger(AuthServiceService.name);
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
   ) {}
+
 
   async register(data: RegisterDto) {
     try {
@@ -25,6 +27,7 @@ export class AuthServiceService {
         },
       });
 
+      this.logger.log(`User registered: ${user.email} (${user.role})`);
       return {
         id: user.id,
         email: user.email,
@@ -38,6 +41,7 @@ export class AuthServiceService {
           message: 'Email sudah terdaftar',
         });
       }
+      this.logger.error('Register error', error);
       throw new RpcException({
         code: 'INTERNAL',
         message: 'Terjadi kesalahan saat register',
@@ -55,7 +59,7 @@ export class AuthServiceService {
     if (!user) {
       throw new RpcException({
         code: 'UNAUTHORIZED',
-        message: 'Krdensial tidak valid',
+        message: 'Kredensial tidak valid',
       });
     }
 
@@ -68,9 +72,9 @@ export class AuthServiceService {
     }
 
     const payload = { sub: user.id, role: user.role };
-    return {
-      accessToken: await this.jwtService.signAsync(payload),
-    };
+    const accessToken = await this.jwtService.signAsync(payload);
+    this.logger.log(`User logged in: ${user.email}`);
+    return { accessToken };
   }
 
   async validateToken(token: string) {
@@ -80,10 +84,10 @@ export class AuthServiceService {
         userId: payload.sub,
         role: payload.role as CommonRole,
       };
-    } catch (error) {
+    } catch {
       throw new RpcException({
         code: 'UNAUTHORIZED',
-        mesasge: 'Token tidak valid atau sudah kadaluwarsa',
+        message: 'Token tidak valid atau sudah kadaluwarsa',
       });
     }
   }

@@ -6,6 +6,7 @@
   "private": true,
   "license": "UNLICENSED",
   "type": "module",
+  "trustedDependencies": ["bcrypt", "prisma"],
   "scripts": {
     "build": "nest build",
     "deploy": "nest deploy",
@@ -21,9 +22,13 @@
     "test:debug": "vitest --inspect-brk --no-file-parallelism",
     "test:e2e": "vitest run --config ./vitest.config.e2e.ts",
     "db:generate:auth": "prisma generate --config apps/auth-service/prisma.config.ts",
-    "db:migrate:auth": "prisma migrate dev --config apps/auth-service/prisma.config.ts"
+    "db:migrate:auth": "prisma migrate dev --config apps/auth-service/prisma.config.ts",
+    "db:migrate:location": "bun --bun typeorm migration:run -d apps/location-service/typeorm.config.ts",
+    "proto:generate": "grpc_tools_node_protoc --plugin=protoc-gen-ts_proto=./node_modules/.bin/protoc-gen-ts_proto --ts_proto_out=./libs/common/src/proto --ts_proto_opt=nestJs=true,addGrpcMetadata=true,addNestjsRestParameter=true,fileSuffix=.pb,exportCommonSymbols=false -I=./libs/common/src/proto ./libs/common/src/proto/location.proto"
   },
   "dependencies": {
+    "@grpc/grpc-js": "^1.14.5",
+    "@grpc/proto-loader": "^0.8.1",
     "@nestjs/common": "^12.0.1",
     "@nestjs/config": "^12.0.1",
     "@nestjs/core": "^12.0.1",
@@ -31,13 +36,16 @@
     "@nestjs/microservices": "^12.1.2",
     "@nestjs/platform-express": "^12.0.1",
     "@nestjs/swagger": "^12.0.2",
+    "@nestjs/typeorm": "^12.0.2",
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "7",
     "bcrypt": "^6.0.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
+    "pg": "^8.23.1",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "typeorm": "^0.3.21"
   },
   "devDependencies": {
     "@nestjs/cli": "^12.0.0",
@@ -51,12 +59,14 @@
     "@types/supertest": "^7.0.0",
     "@vitest/coverage-v8": "^4.1.2",
     "dotenv": "^18.0.5",
+    "grpc-tools": "^1.13.1",
     "oxlint": "^1.58.0",
     "oxlint-tsgolint": "^7.0.2001",
     "prettier": "^3.4.2",
     "prisma": "7",
     "source-map-support": "^0.5.21",
     "supertest": "^7.0.0",
+    "ts-proto": "^2.12.4",
     "tsconfig-paths-webpack-plugin": "^4.2.0",
     "typescript": "^6.0.2",
     "vitest": "^4.1.2",

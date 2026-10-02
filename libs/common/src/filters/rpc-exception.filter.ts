@@ -30,6 +30,9 @@ export class RpcExceptionToHttpFilter implements ExceptionFilter {
     if (code === 'EMAIL_TAKEN') status = HttpStatus.CONFLICT; // 409
     if (code === 'UNAUTHORIZED') status = HttpStatus.UNAUTHORIZED; // 401
     if (code === 'NOT_FOUND') status = HttpStatus.NOT_FOUND; // 404
+    if (code === 'VALIDATION_ERROR') status = HttpStatus.BAD_REQUEST; // 400
+    if (code === 'FORBIDDEN') status = HttpStatus.FORBIDDEN; // 403
+    if (code === 'INVALID_STATUS_TRANSITION') status = HttpStatus.CONFLICT; // 409
 
     // 4. Kirimkan balasan JSON
     response.status(status).json({

@@ -3,18 +3,19 @@ import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { LocationServiceModule } from './location-service.module.js';
 import { fileURLToPath } from 'url';
 import { join, dirname } from 'path';
+import { existsSync } from 'fs';
 
 async function bootstrap() {
   const __dirname = dirname(fileURLToPath(import.meta.url));
 
-  // Saat `nest build`: file ini ada di dist/apps/location-service/main.js
-  //   → proto sudah disalin ke dist/apps/location-service/location.proto (oleh assets nest-cli)
-  // Saat `start:dev` (ts-node/swc): file ini ada di apps/location-service/src/main.ts
-  //   → proto ada di libs/common/src/proto/location.proto
-  const isDist = __dirname.includes(`dist`);
-  const protoPath = isDist
-    ? join(__dirname, 'location.proto')
-    : join(__dirname, '../../../libs/common/src/proto/location.proto');
+  // Cari proto di dist/ dulu (setelah build), fallback ke source saat dev
+  // Lebih aman dari includes('dist') yang bisa false-positive jika nama folder mengandung 'dist'
+  const distProto = join(__dirname, 'location.proto');
+  const devProto = join(
+    __dirname,
+    '../../../libs/common/src/proto/location.proto',
+  );
+  const protoPath = existsSync(distProto) ? distProto : devProto;
 
   const app = await NestFactory.createMicroservice<MicroserviceOptions>(
     LocationServiceModule,

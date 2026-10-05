@@ -13,7 +13,7 @@ import { DriverLocationRepository } from './driver-location.repository.js';
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
         type: 'postgres',
-        url: configService.get<string>('LOCATION_DATABASE_URL'),
+        url: configService.getOrThrow<string>('LOCATION_DATABASE_URL'),
         synchronize: false,
       }),
     }),

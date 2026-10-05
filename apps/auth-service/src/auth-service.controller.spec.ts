@@ -3,16 +3,28 @@ import { AuthServiceController } from './auth-service.controller.js';
 import { AuthServiceService } from './auth-service.service.js';
 import { PrismaService } from './prisma/prisma.service.js';
 import { JwtService } from '@nestjs/jwt';
-import { vi } from 'vitest';
+import { RpcException } from '@nestjs/microservices';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { Role } from '@app/common';
 
 describe('AuthServiceController', () => {
-  let authServiceController: AuthServiceController;
+  let controller: AuthServiceController;
+  let service: AuthServiceService;
 
-  const prismaMock = { user: { findUnique: vi.fn(), create: vi.fn() } };
-  const jwtMock = { signAsync: vi.fn(), verifyAsync: vi.fn() };
+  const prismaMock = {
+    user: {
+      findUnique: vi.fn(),
+      create: vi.fn(),
+    },
+  };
+  const jwtMock = {
+    signAsync: vi.fn(),
+    verifyAsync: vi.fn(),
+  };
 
   beforeEach(async () => {
-    const app: TestingModule = await Test.createTestingModule({
+    vi.clearAllMocks();
+    const module: TestingModule = await Test.createTestingModule({
       controllers: [AuthServiceController],
       providers: [
         AuthServiceService,
@@ -21,12 +33,108 @@ describe('AuthServiceController', () => {
       ],
     }).compile();
 
-    authServiceController = app.get<AuthServiceController>(AuthServiceController);
+    controller = module.get<AuthServiceController>(AuthServiceController);
+    service = module.get<AuthServiceService>(AuthServiceService);
   });
 
-  describe('root', () => {
-    it('should be defined', () => {
-      expect(authServiceController).toBeDefined();
+  it('should be defined', () => {
+    expect(controller).toBeDefined();
+  });
+
+  // ── register ──────────────────────────────────────────────────────────────
+
+  describe('register', () => {
+    it('should return user data on success', async () => {
+      const fakeUser = {
+        id: 'uuid-1',
+        email: 'a@b.com',
+        name: 'Budi',
+        role: Role.CUSTOMER,
+      };
+      prismaMock.user.create.mockResolvedValue(fakeUser);
+
+      const result = await service.register({
+        email: 'a@b.com',
+        password: 'password123',
+        name: 'Budi',
+        role: Role.CUSTOMER,
+      });
+
+      expect(result).toMatchObject({
+        id: 'uuid-1',
+        email: 'a@b.com',
+        role: Role.CUSTOMER,
+      });
+    });
+
+    it('should throw EMAIL_TAKEN when Prisma returns P2002', async () => {
+      prismaMock.user.create.mockRejectedValue({ code: 'P2002' });
+
+      await expect(
+        service.register({
+          email: 'dup@b.com',
+          password: 'pass123',
+          name: 'X',
+          role: Role.DRIVER,
+        }),
+      ).rejects.toThrow(RpcException);
+
+      await expect(
+        service.register({
+          email: 'dup@b.com',
+          password: 'pass123',
+          name: 'X',
+          role: Role.DRIVER,
+        }),
+      ).rejects.toMatchObject({ error: { code: 'EMAIL_TAKEN' } });
+    });
+  });
+
+  // ── login ─────────────────────────────────────────────────────────────────
+
+  describe('login', () => {
+    it('should throw UNAUTHORIZED when user not found', async () => {
+      prismaMock.user.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.login({ email: 'notfound@b.com', password: 'pass123' }),
+      ).rejects.toMatchObject({ error: { code: 'UNAUTHORIZED' } });
+    });
+
+    it('should throw UNAUTHORIZED on wrong password', async () => {
+      // bcrypt.compare akan return false karena hash tidak cocok
+      prismaMock.user.findUnique.mockResolvedValue({
+        id: 'uuid-1',
+        email: 'a@b.com',
+        passwordHash: 'wrong_hash_not_valid_bcrypt',
+        role: Role.CUSTOMER,
+      });
+
+      await expect(
+        service.login({ email: 'a@b.com', password: 'wrongpassword' }),
+      ).rejects.toMatchObject({ error: { code: 'UNAUTHORIZED' } });
+    });
+  });
+
+  // ── validateToken ──────────────────────────────────────────────────────────
+
+  describe('validateToken', () => {
+    it('should throw UNAUTHORIZED when jwt.verifyAsync throws', async () => {
+      jwtMock.verifyAsync.mockRejectedValue(new Error('jwt expired'));
+
+      await expect(
+        service.validateToken('invalid.token.here'),
+      ).rejects.toMatchObject({ error: { code: 'UNAUTHORIZED' } });
+    });
+
+    it('should return userId and role on valid token', async () => {
+      jwtMock.verifyAsync.mockResolvedValue({
+        sub: 'uuid-1',
+        role: Role.DRIVER,
+      });
+
+      const result = await service.validateToken('valid.token.here');
+      expect(result).toEqual({ userId: 'uuid-1', role: Role.DRIVER });
     });
   });
 });

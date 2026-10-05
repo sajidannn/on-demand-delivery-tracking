@@ -5,9 +5,9 @@
 // source: location.proto
 
 /* eslint-disable */
-import type { Metadata } from "@grpc/grpc-js";
-import { GrpcMethod, GrpcStreamMethod } from "@nestjs/microservices";
-import { Observable } from "rxjs";
+import type { Metadata } from '@grpc/grpc-js';
+import { GrpcMethod, GrpcStreamMethod } from '@nestjs/microservices';
+import { Observable } from 'rxjs';
 
 export interface FindNearestDriversRequest {
   lat: number;
@@ -57,30 +57,53 @@ export interface LocationServiceController {
     request: FindNearestDriversRequest,
     metadata: Metadata,
     ...rest: any
-  ): Promise<FindNearestDriversResponse> | Observable<FindNearestDriversResponse> | FindNearestDriversResponse;
+  ):
+    | Promise<FindNearestDriversResponse>
+    | Observable<FindNearestDriversResponse>
+    | FindNearestDriversResponse;
 
   setDriverAvailability(
     request: SetDriverAvailabilityRequest,
     metadata: Metadata,
     ...rest: any
-  ): Promise<SetDriverAvailabilityResponse> | Observable<SetDriverAvailabilityResponse> | SetDriverAvailabilityResponse;
+  ):
+    | Promise<SetDriverAvailabilityResponse>
+    | Observable<SetDriverAvailabilityResponse>
+    | SetDriverAvailabilityResponse;
 }
 
 export function LocationServiceControllerMethods() {
   return function (constructor: Function) {
-    const grpcMethods: string[] = ["findNearestDrivers", "setDriverAvailability"];
+    const grpcMethods: string[] = [
+      'findNearestDrivers',
+      'setDriverAvailability',
+    ];
     for (const method of grpcMethods) {
-      const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);
-      GrpcMethod("LocationService", method)(constructor.prototype[method], method, descriptor);
+      const descriptor: any = Reflect.getOwnPropertyDescriptor(
+        constructor.prototype,
+        method,
+      );
+      GrpcMethod('LocationService', method)(
+        constructor.prototype[method],
+        method,
+        descriptor,
+      );
       Object.defineProperty(constructor.prototype, method, descriptor);
     }
     const grpcStreamMethods: string[] = [];
     for (const method of grpcStreamMethods) {
-      const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);
-      GrpcStreamMethod("LocationService", method)(constructor.prototype[method], method, descriptor);
+      const descriptor: any = Reflect.getOwnPropertyDescriptor(
+        constructor.prototype,
+        method,
+      );
+      GrpcStreamMethod('LocationService', method)(
+        constructor.prototype[method],
+        method,
+        descriptor,
+      );
       Object.defineProperty(constructor.prototype, method, descriptor);
     }
   };
 }
 
-export const LOCATION_SERVICE_NAME = "LocationService";
+export const LOCATION_SERVICE_NAME = 'LocationService';

@@ -1,11 +1,9 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgis/postgis:15-3.3
     container_name: oddt-postgres
     ports:
-      - "5432:5432"
+      - '5432:5432'
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -19,8 +17,8 @@ services:
     image: rabbitmq:3-management
     container_name: oddt-rabbitmq
     ports:
-      - "5672:5672"
-      - "15672:15672"
+      - '5672:5672'
+      - '15672:15672'
     restart: unless-stopped
 
 volumes:

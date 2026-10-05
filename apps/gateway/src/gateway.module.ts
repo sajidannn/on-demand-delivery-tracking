@@ -4,24 +4,29 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
 import { GatewayController } from './gateway.controller.js';
 import { GatewayService } from './gateway.service.js';
 import { AuthController } from './auth.controller.js';
-import { LOCATION_SERVICE_NAME } from '@app/common';
+import { AUTH_SERVICE_TOKEN, LOCATION_SERVICE_NAME } from '@app/common';
 import { fileURLToPath } from 'url';
 import { join, dirname } from 'path';
+import { existsSync } from 'fs';
 import { DriverController } from './driver.controller.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const isDist = __dirname.includes('dist');
-const locationProtoPath = isDist
-  ? join(__dirname, 'location.proto')
-  : join(__dirname, '../../../libs/common/src/proto/location.proto');
-
+// Cari proto di dist/ dulu (setelah build), fallback ke source saat dev
+const distProtoPath = join(__dirname, 'location.proto');
+const devProtoPath = join(
+  __dirname,
+  '../../../libs/common/src/proto/location.proto',
+);
+const locationProtoPath = existsSync(distProtoPath)
+  ? distProtoPath
+  : devProtoPath;
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     ClientsModule.registerAsync([
       {
-        name: 'AUTH_SERVICE',
+        name: AUTH_SERVICE_TOKEN,
         inject: [ConfigService],
         useFactory: (config: ConfigService) => ({
           transport: Transport.TCP,

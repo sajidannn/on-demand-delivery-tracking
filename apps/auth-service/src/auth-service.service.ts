@@ -13,7 +13,6 @@ export class AuthServiceService {
     private readonly jwtService: JwtService,
   ) {}
 
-
   async register(data: RegisterDto) {
     try {
       const passwordHash = await bcrypt.hash(data.password, 10);

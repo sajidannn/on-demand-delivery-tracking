@@ -6,6 +6,8 @@ import {
   Req,
   Inject,
   OnModuleInit,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -26,15 +28,21 @@ import { Roles } from './decorators/roles.decorator.js';
 import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
 import { RolesGuard } from './guards/roles.guard.js';
 
+interface AuthenticatedRequest {
+  user: { userId: string; role: Role };
+}
+
 @ApiTags('Drivers')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(Role.DRIVER)
 @Controller('drivers')
 export class DriverController implements OnModuleInit {
-  private locationService: LocationServiceClient;
+  private locationService!: LocationServiceClient;
 
-  constructor(@Inject(LOCATION_SERVICE_NAME) private client: ClientGrpc) {}
+  constructor(
+    @Inject(LOCATION_SERVICE_NAME) private readonly client: ClientGrpc,
+  ) {}
 
   onModuleInit() {
     this.locationService = this.client.getService<LocationServiceClient>(
@@ -43,43 +51,47 @@ export class DriverController implements OnModuleInit {
   }
 
   @Post('online')
-  @ApiOperation({ summary: 'Set driver availability to online' })
-  @ApiResponse({ status: 200, description: 'Success setting online' })
-  @ApiResponse({ status: 400, description: 'Validation failed' })
-  @ApiResponse({ status: 403, description: 'Forbidden' })
-  async setOnline(@Req() req: any, @Body() body: DriverLocationDto) {
-    const driverId = req.user.userId;
-    const response = await firstValueFrom(
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Set driver online dengan lokasi awal' })
+  @ApiResponse({
+    status: 200,
+    description: 'Driver berhasil online — mengembalikan {ok: true}',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Validasi gagal (VALIDATION_ERROR)',
+  })
+  @ApiResponse({ status: 401, description: 'Token tidak valid (UNAUTHORIZED)' })
+  @ApiResponse({ status: 403, description: 'Bukan role DRIVER (FORBIDDEN)' })
+  async setOnline(
+    @Req() req: AuthenticatedRequest,
+    @Body() body: DriverLocationDto,
+  ) {
+    const { userId: driverId } = req.user;
+    return firstValueFrom(
       this.locationService.setDriverAvailability(
-        {
-          driverId,
-          isAvailable: true,
-          lat: body.lat,
-          lng: body.lng,
-        },
+        { driverId, isAvailable: true, lat: body.lat, lng: body.lng },
         new Metadata(),
       ),
     );
-    return response;
   }
 
   @Post('offline')
-  @ApiOperation({ summary: 'Set driver availability to offline' })
-  @ApiResponse({ status: 200, description: 'Success setting offline' })
-  @ApiResponse({ status: 403, description: 'Forbidden' })
-  async setOffline(@Req() req: any) {
-    const driverId = req.user.userId;
-    const response = await firstValueFrom(
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Set driver offline' })
+  @ApiResponse({
+    status: 200,
+    description: 'Driver berhasil offline — mengembalikan {ok: true}',
+  })
+  @ApiResponse({ status: 401, description: 'Token tidak valid (UNAUTHORIZED)' })
+  @ApiResponse({ status: 403, description: 'Bukan role DRIVER (FORBIDDEN)' })
+  async setOffline(@Req() req: AuthenticatedRequest) {
+    const { userId: driverId } = req.user;
+    return firstValueFrom(
       this.locationService.setDriverAvailability(
-        {
-          driverId,
-          isAvailable: false,
-          lat: 0,
-          lng: 0,
-        },
+        { driverId, isAvailable: false, lat: 0, lng: 0 },
         new Metadata(),
       ),
     );
-    return response;
   }
 }

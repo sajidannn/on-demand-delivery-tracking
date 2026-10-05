@@ -1,16 +1,15 @@
 import { Controller, Get } from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { GatewayService } from './gateway.service.js';
+import { ApiExcludeController } from '@nestjs/swagger';
 
-@ApiTags('System')
+/**
+ * Health-check minimal. Tidak didokumentasikan di Swagger (bukan bagian PRD §5).
+ * Gunakan untuk cek apakah gateway HTTP server berjalan.
+ */
+@ApiExcludeController()
 @Controller()
 export class GatewayController {
-  constructor(private readonly gatewayService: GatewayService) {}
-
-  @Get()
-  @ApiOperation({ summary: 'Get Hello' })
-  @ApiResponse({ status: 200, description: 'Hello Message' })
-  getHello(): string {
-    return this.gatewayService.getHello();
+  @Get('health')
+  health(): { status: string } {
+    return { status: 'ok' };
   }
 }

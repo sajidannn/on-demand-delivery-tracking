@@ -3,20 +3,23 @@ import {
   ExecutionContext,
   Inject,
   Injectable,
+  ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
-import { firstValueFrom } from 'rxjs';
-import { PATTERNS } from '@app/common';
+import { firstValueFrom, timeout } from 'rxjs';
+import { AUTH_SERVICE_TOKEN, PATTERNS } from '@app/common';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
   constructor(
-    @Inject('AUTH_SERVICE') private readonly authClient: ClientProxy,
+    @Inject(AUTH_SERVICE_TOKEN) private readonly authClient: ClientProxy,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context.switchToHttp().getRequest();
+    const request = context
+      .switchToHttp()
+      .getRequest<{ headers: Record<string, string>; user: unknown }>();
     const authHeader = request.headers['authorization'];
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -26,15 +29,21 @@ export class JwtAuthGuard implements CanActivate {
     const token = authHeader.split(' ')[1];
 
     try {
-      // Call Auth Service
-      const user = await firstValueFrom(
-        this.authClient.send(PATTERNS.AUTH.VALIDATE_TOKEN, { token }),
+      request.user = await firstValueFrom(
+        this.authClient
+          .send(PATTERNS.AUTH.VALIDATE_TOKEN, { token })
+          .pipe(timeout(3000)),
       );
-
-      // Jika valid, simpan data user ke dalam object request agar bisa dibaca oleh Controller
-      request.user = user;
       return true;
     } catch (error) {
+      // Bedakan: token invalid vs auth-service tidak tersedia
+      const err = error as { code?: string; name?: string };
+      if (err.code === 'UNAUTHORIZED') {
+        throw new UnauthorizedException('Token tidak valid atau kadaluarsa');
+      }
+      if (err.name === 'TimeoutError') {
+        throw new ServiceUnavailableException('Auth service tidak tersedia');
+      }
       throw new UnauthorizedException('Token tidak valid atau kadaluarsa');
     }
   }

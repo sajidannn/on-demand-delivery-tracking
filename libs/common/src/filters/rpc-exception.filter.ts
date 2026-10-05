@@ -25,6 +25,7 @@ const RPC_CODE_TO_STATUS: Record<string, number> = {
   NOT_FOUND: HttpStatus.NOT_FOUND,
   EMAIL_TAKEN: HttpStatus.CONFLICT,
   INVALID_STATUS_TRANSITION: HttpStatus.CONFLICT,
+  SERVICE_UNAVAILABLE: HttpStatus.SERVICE_UNAVAILABLE,
 };
 
 @Catch()
@@ -55,16 +56,31 @@ export class RpcExceptionToHttpFilter implements ExceptionFilter {
       });
     }
 
-    // 2. Error dari microservice TCP/gRPC (objek murni, bukan Error class)
+    // 2. Error koneksi microservice / timeout (service down atau tidak merespons)
     const err = exception as Record<string, unknown>;
-    const code = (
-      typeof err?.code === 'string' ? err.code : 'INTERNAL'
-    ) as string;
-    const message = (
+    const rawCode = typeof err?.code === 'string' ? err.code : '';
+    const errName = typeof err?.name === 'string' ? err.name : '';
+
+    if (
+      rawCode === 'ECONNREFUSED' ||
+      rawCode === 'ECONNRESET' ||
+      errName === 'TimeoutError'
+    ) {
+      return response.status(HttpStatus.SERVICE_UNAVAILABLE).json({
+        statusCode: HttpStatus.SERVICE_UNAVAILABLE,
+        code: 'SERVICE_UNAVAILABLE',
+        message: 'Layanan tidak tersedia',
+      });
+    }
+
+    // 3. Error dari microservice TCP/gRPC (objek murni dari RpcException)
+    const hasKnownCode =
+      typeof err?.code === 'string' && err.code in RPC_CODE_TO_STATUS;
+    const code = hasKnownCode ? (err.code as string) : 'INTERNAL';
+    const message =
       typeof err?.message === 'string'
         ? err.message
-        : 'Terjadi kesalahan internal'
-    ) as string;
+        : 'Terjadi kesalahan internal';
     const status = RPC_CODE_TO_STATUS[code] ?? HttpStatus.INTERNAL_SERVER_ERROR;
 
     response.status(status).json({

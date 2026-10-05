@@ -75,6 +75,8 @@ model User {
   name         String
   role         Role
   createdAt    DateTime @default(now())
+
+  @@map("users")
 }
 ```
 

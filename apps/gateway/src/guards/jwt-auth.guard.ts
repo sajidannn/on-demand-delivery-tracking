@@ -36,15 +36,12 @@ export class JwtAuthGuard implements CanActivate {
       );
       return true;
     } catch (error) {
-      // Bedakan: token invalid vs auth-service tidak tersedia
+      // Bedakan: token invalid vs auth-service tidak tersedia / down
       const err = error as { code?: string; name?: string };
       if (err.code === 'UNAUTHORIZED') {
         throw new UnauthorizedException('Token tidak valid atau kadaluarsa');
       }
-      if (err.name === 'TimeoutError') {
-        throw new ServiceUnavailableException('Auth service tidak tersedia');
-      }
-      throw new UnauthorizedException('Token tidak valid atau kadaluarsa');
+      throw new ServiceUnavailableException('Auth service tidak tersedia');
     }
   }
 }

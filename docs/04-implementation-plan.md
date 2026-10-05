@@ -34,25 +34,27 @@ Tiap task selesai bila memenuhi _Definition of Done_ di `AGENTS.md`.
 - [x] [W] Repository dengan raw SQL: upsert, find nearest
 - [x] [W] gRPC `SetDriverAvailability`, `FindNearestDrivers`
 - [x] [W] Gateway: gRPC client, `POST /drivers/online|offline` (+ Swagger)
-- [ ] [N] Seed 3–5 driver dummy untuk tes
+- [x] [N] Seed 3–5 driver dummy untuk tes
 
 **Selesai bila:** `grpcurl` mengembalikan driver terdekat yang urutannya benar.
 
 ## Hari 4 — Order Service + Kunci Driver
 
 **Fase 4a: Location Service & Persiapan**
-- [ ] [W] Migrasi Location: tambah `current_order_id` & env `DRIVER_STALE_SECONDS`
-- [ ] [W] Update gRPC `location.proto`: `ReserveNearestDriver` dan `ReleaseDriver`
-- [ ] [W] Implementasi reserve atomik (`SKIP LOCKED`) dan release di Location Service
-- [ ] [N] Seed 3-5 driver dummy untuk tes (pindahan dari Hari 3)
+
+- [x] [W] Migrasi Location: tambah `current_order_id` & env `DRIVER_STALE_SECONDS`
+- [x] [W] Update gRPC `location.proto`: `ReserveNearestDriver` dan `ReleaseDriver`
+- [x] [W] Implementasi reserve atomik (`SKIP LOCKED`) dan release di Location Service
+- [x] [N] Seed 3-5 driver dummy untuk tes (pindahan dari Hari 3)
 
 **Fase 4b: Order Service & Gateway**
-- [ ] [W] TypeORM koneksi `order_db`, migrasi tabel `orders` (geography)
-- [ ] [W] State machine (service terpisah, unit test transisi)
-- [ ] [W] TCP `order.create/get/list/update_status`
-- [ ] [W] Hitung `distance_m` (`ST_Distance`) dan `fee` flat
-- [ ] [W] gRPC client ke Location, panggil reserve saat create, release saat `COMPLETED`
-- [ ] [W] Gateway `OrderController` + guard role + Swagger
+
+- [x] [W] TypeORM koneksi `order_db`, migrasi tabel `orders` (geography)
+- [x] [W] State machine (service terpisah, unit test transisi)
+- [x] [W] TCP `order.create/get/list/update_status`
+- [x] [W] Hitung `distance_m` (`ST_Distance`) dan `fee` flat
+- [x] [W] gRPC client ke Location, panggil reserve saat create, release saat `COMPLETED`
+- [x] [W] Gateway `OrderController` + guard role + Swagger
 
 **Selesai bila:** `POST /orders` menghasilkan `DRIVER_ASSIGNED` dengan driver terdekat; transisi ilegal 409; driver yang di-assign tidak bisa menerima order lain secara bersamaan.
 

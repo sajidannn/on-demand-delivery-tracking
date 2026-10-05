@@ -28,6 +28,7 @@
     "test:e2e": "vitest run --config ./vitest.config.e2e.ts --passWithNoTests",
     "db:generate:auth": "prisma generate --config apps/auth-service/prisma.config.ts",
     "db:migrate:auth": "prisma migrate dev --config apps/auth-service/prisma.config.ts",
+    "db:migrate:order": "bun --bun typeorm migration:run -d apps/order-service/typeorm.config.ts",
     "db:migrate:location": "bun --bun typeorm migration:run -d apps/location-service/typeorm.config.ts",
     "proto:generate": "grpc_tools_node_protoc --plugin=protoc-gen-ts_proto=./node_modules/.bin/protoc-gen-ts_proto --ts_proto_out=./libs/common/src/proto --ts_proto_opt=nestJs=true,addGrpcMetadata=true,addNestjsRestParameter=true,fileSuffix=.pb,exportCommonSymbols=false -I=./libs/common/src/proto ./libs/common/src/proto/location.proto"
   },

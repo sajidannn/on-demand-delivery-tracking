@@ -4,6 +4,8 @@ package location;
 service LocationService {
   rpc FindNearestDrivers (FindNearestDriversRequest) returns (FindNearestDriversResponse);
   rpc SetDriverAvailability (SetDriverAvailabilityRequest) returns (SetDriverAvailabilityResponse);
+  rpc ReserveNearestDriver (ReserveNearestDriverRequest) returns (ReserveNearestDriverResponse);
+  rpc ReleaseDriver (ReleaseDriverRequest) returns (ReleaseDriverResponse);
 }
 
 message FindNearestDriversRequest { double lat = 1; double lng = 2; int32 radius_m = 3; int32 limit = 4; }
@@ -12,3 +14,8 @@ message FindNearestDriversResponse { repeated NearbyDriver drivers = 1; }
 
 message SetDriverAvailabilityRequest { string driver_id = 1; bool is_available = 2; double lat = 3; double lng = 4; }
 message SetDriverAvailabilityResponse { bool ok = 1; }
+
+message ReserveNearestDriverRequest { string order_id = 1; double lat = 2; double lng = 3; int32 radius_m = 4; }
+message ReserveNearestDriverResponse { bool found = 1; NearbyDriver driver = 2; }
+message ReleaseDriverRequest { string order_id = 1; }
+message ReleaseDriverResponse { bool released = 1; }

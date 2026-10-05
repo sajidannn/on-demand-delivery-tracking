@@ -6,6 +6,10 @@ import {
   FindNearestDriversResponse,
   SetDriverAvailabilityRequest,
   SetDriverAvailabilityResponse,
+  ReserveNearestDriverRequest,
+  ReserveNearestDriverResponse,
+  ReleaseDriverRequest,
+  ReleaseDriverResponse,
 } from '@app/common'; // Karena sudah kita export di libs/common
 import { LocationServiceService } from './location-service.service.js';
 
@@ -26,5 +30,17 @@ export class LocationServiceController implements ILocationServiceController {
   ): Promise<SetDriverAvailabilityResponse> {
     await this.service.setAvailability(request);
     return { ok: true };
+  }
+
+  async reserveNearestDriver(
+    request: ReserveNearestDriverRequest,
+  ): Promise<ReserveNearestDriverResponse> {
+    return this.service.reserveNearest(request);
+  }
+
+  async releaseDriver(
+    request: ReleaseDriverRequest,
+  ): Promise<ReleaseDriverResponse> {
+    return this.service.releaseDriver(request);
   }
 }

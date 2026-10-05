@@ -5,9 +5,9 @@
 // source: location.proto
 
 /* eslint-disable */
-import type { Metadata } from '@grpc/grpc-js';
-import { GrpcMethod, GrpcStreamMethod } from '@nestjs/microservices';
-import { Observable } from 'rxjs';
+import type { Metadata } from "@grpc/grpc-js";
+import { GrpcMethod, GrpcStreamMethod } from "@nestjs/microservices";
+import { Observable } from "rxjs";
 
 export interface FindNearestDriversRequest {
   lat: number;
@@ -38,6 +38,26 @@ export interface SetDriverAvailabilityResponse {
   ok: boolean;
 }
 
+export interface ReserveNearestDriverRequest {
+  orderId: string;
+  lat: number;
+  lng: number;
+  radiusM: number;
+}
+
+export interface ReserveNearestDriverResponse {
+  found: boolean;
+  driver: NearbyDriver | undefined;
+}
+
+export interface ReleaseDriverRequest {
+  orderId: string;
+}
+
+export interface ReleaseDriverResponse {
+  released: boolean;
+}
+
 export interface LocationServiceClient {
   findNearestDrivers(
     request: FindNearestDriversRequest,
@@ -50,6 +70,14 @@ export interface LocationServiceClient {
     metadata: Metadata,
     ...rest: any
   ): Observable<SetDriverAvailabilityResponse>;
+
+  reserveNearestDriver(
+    request: ReserveNearestDriverRequest,
+    metadata: Metadata,
+    ...rest: any
+  ): Observable<ReserveNearestDriverResponse>;
+
+  releaseDriver(request: ReleaseDriverRequest, metadata: Metadata, ...rest: any): Observable<ReleaseDriverResponse>;
 }
 
 export interface LocationServiceController {
@@ -57,53 +85,47 @@ export interface LocationServiceController {
     request: FindNearestDriversRequest,
     metadata: Metadata,
     ...rest: any
-  ):
-    | Promise<FindNearestDriversResponse>
-    | Observable<FindNearestDriversResponse>
-    | FindNearestDriversResponse;
+  ): Promise<FindNearestDriversResponse> | Observable<FindNearestDriversResponse> | FindNearestDriversResponse;
 
   setDriverAvailability(
     request: SetDriverAvailabilityRequest,
     metadata: Metadata,
     ...rest: any
-  ):
-    | Promise<SetDriverAvailabilityResponse>
-    | Observable<SetDriverAvailabilityResponse>
-    | SetDriverAvailabilityResponse;
+  ): Promise<SetDriverAvailabilityResponse> | Observable<SetDriverAvailabilityResponse> | SetDriverAvailabilityResponse;
+
+  reserveNearestDriver(
+    request: ReserveNearestDriverRequest,
+    metadata: Metadata,
+    ...rest: any
+  ): Promise<ReserveNearestDriverResponse> | Observable<ReserveNearestDriverResponse> | ReserveNearestDriverResponse;
+
+  releaseDriver(
+    request: ReleaseDriverRequest,
+    metadata: Metadata,
+    ...rest: any
+  ): Promise<ReleaseDriverResponse> | Observable<ReleaseDriverResponse> | ReleaseDriverResponse;
 }
 
 export function LocationServiceControllerMethods() {
   return function (constructor: Function) {
     const grpcMethods: string[] = [
-      'findNearestDrivers',
-      'setDriverAvailability',
+      "findNearestDrivers",
+      "setDriverAvailability",
+      "reserveNearestDriver",
+      "releaseDriver",
     ];
     for (const method of grpcMethods) {
-      const descriptor: any = Reflect.getOwnPropertyDescriptor(
-        constructor.prototype,
-        method,
-      );
-      GrpcMethod('LocationService', method)(
-        constructor.prototype[method],
-        method,
-        descriptor,
-      );
+      const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);
+      GrpcMethod("LocationService", method)(constructor.prototype[method], method, descriptor);
       Object.defineProperty(constructor.prototype, method, descriptor);
     }
     const grpcStreamMethods: string[] = [];
     for (const method of grpcStreamMethods) {
-      const descriptor: any = Reflect.getOwnPropertyDescriptor(
-        constructor.prototype,
-        method,
-      );
-      GrpcStreamMethod('LocationService', method)(
-        constructor.prototype[method],
-        method,
-        descriptor,
-      );
+      const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);
+      GrpcStreamMethod("LocationService", method)(constructor.prototype[method], method, descriptor);
       Object.defineProperty(constructor.prototype, method, descriptor);
     }
   };
 }
 
-export const LOCATION_SERVICE_NAME = 'LocationService';
+export const LOCATION_SERVICE_NAME = "LocationService";

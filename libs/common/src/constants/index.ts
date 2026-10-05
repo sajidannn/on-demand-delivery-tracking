@@ -3,6 +3,7 @@ export const NOTIFICATION_QUEUE = 'notification_queue';
 export const LOCATION_QUEUE = 'location_queue';
 
 export const AUTH_SERVICE_TOKEN = 'AUTH_SERVICE';
+export const ORDER_SERVICE_TOKEN = 'ORDER_SERVICE';
 
 export const PATTERNS = {
   AUTH: {

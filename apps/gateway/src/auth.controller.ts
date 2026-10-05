@@ -57,9 +57,9 @@ export class AuthController {
     status: 409,
     description: 'Email sudah terdaftar (EMAIL_TAKEN)',
   })
-  async register(@Body() data: RegisterDto) {
+  async register(@Body() data: RegisterDto): Promise<UserResponseDto> {
     return firstValueFrom(
-      this.authClient.send(PATTERNS.AUTH.REGISTER, data).pipe(timeout(5000)),
+      this.authClient.send<UserResponseDto>(PATTERNS.AUTH.REGISTER, data).pipe(timeout(5000)),
     );
   }
 
@@ -81,9 +81,9 @@ export class AuthController {
     description: 'Kredensial tidak valid (UNAUTHORIZED)',
     type: ErrorResponseDto,
   })
-  async login(@Body() data: LoginDto) {
+  async login(@Body() data: LoginDto): Promise<TokenResponseDto> {
     return firstValueFrom(
-      this.authClient.send(PATTERNS.AUTH.LOGIN, data).pipe(timeout(5000)),
+      this.authClient.send<TokenResponseDto>(PATTERNS.AUTH.LOGIN, data).pipe(timeout(5000)),
     );
   }
 
@@ -108,10 +108,10 @@ export class AuthController {
     description: 'Auth service tidak tersedia (SERVICE_UNAVAILABLE)',
     type: ErrorResponseDto,
   })
-  async getMe(@Req() req: AuthenticatedRequest) {
+  async getMe(@Req() req: AuthenticatedRequest): Promise<UserResponseDto> {
     const { userId } = req.user;
     return firstValueFrom(
-      this.authClient.send(PATTERNS.AUTH.ME, { userId }).pipe(timeout(5000)),
+      this.authClient.send<UserResponseDto>(PATTERNS.AUTH.ME, { userId }).pipe(timeout(5000)),
     );
   }
 }

@@ -8,7 +8,12 @@ describe('OrderServiceController', () => {
   beforeEach(async () => {
     const app: TestingModule = await Test.createTestingModule({
       controllers: [OrderServiceController],
-      providers: [OrderServiceService],
+      providers: [
+        {
+          provide: OrderServiceService,
+          useValue: {},
+        },
+      ],
     }).compile();
 
     orderServiceController = app.get<OrderServiceController>(
@@ -17,8 +22,8 @@ describe('OrderServiceController', () => {
   });
 
   describe('root', () => {
-    it('should return "Hello World!"', () => {
-      expect(orderServiceController.getHello()).toBe('Hello World!');
+    it('should be defined', () => {
+      expect(orderServiceController).toBeDefined();
     });
   });
 });

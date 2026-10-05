@@ -1,8 +1,175 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, OnModuleInit, Logger } from '@nestjs/common';
+import { RpcException } from '@nestjs/microservices';
+import type { ClientGrpc } from '@nestjs/microservices';
+import {
+  CreateOrderPayloadDto,
+  LOCATION_SERVICE_NAME,
+  LocationServiceClient,
+  OrderDto,
+  OrderStatus,
+  Role,
+  UpdateOrderStatusPayloadDto,
+} from '@app/common';
+import { OrderRepository, OrderRow } from './order.repository.js';
+import { OrderStateMachine } from './order-state-machine.service.js';
+import { ConfigService } from '@nestjs/config';
+import { firstValueFrom, timeout } from 'rxjs';
+import { Metadata } from '@grpc/grpc-js';
 
 @Injectable()
-export class OrderServiceService {
-  getHello(): string {
-    return 'Hello World!';
+export class OrderServiceService implements OnModuleInit {
+  private locationService: LocationServiceClient;
+  private readonly logger = new Logger(OrderServiceService.name);
+
+  constructor(
+    @Inject(LOCATION_SERVICE_NAME) private readonly client: ClientGrpc,
+    private readonly orderRepository: OrderRepository,
+    private readonly stateMachine: OrderStateMachine,
+    private readonly configService: ConfigService,
+  ) {}
+
+  onModuleInit() {
+    this.locationService =
+      this.client.getService<LocationServiceClient>(LOCATION_SERVICE_NAME);
+  }
+
+  private toOrderDto(row: OrderRow): OrderDto {
+    return {
+      id: row.id,
+      customerId: row.customer_id,
+      driverId: row.driver_id || undefined,
+      status: row.status,
+      distanceM: row.distance_m,
+      fee: row.fee,
+      pickup: { lat: row.pickup_lat, lng: row.pickup_lng },
+      dropoff: { lat: row.dropoff_lat, lng: row.dropoff_lng },
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    };
+  }
+
+  async create(payload: CreateOrderPayloadDto): Promise<OrderDto> {
+    const orderRow = await this.orderRepository.createOrder(
+      payload.customerId,
+      payload.pickup.lat,
+      payload.pickup.lng,
+      payload.dropoff.lat,
+      payload.dropoff.lng,
+    );
+    this.logger.log(`Order created: ${orderRow.id} for customer ${payload.customerId}`);
+
+    const radiusM = this.configService.get<number>('SEARCH_RADIUS_M', 3000);
+    
+    try {
+      const response = await firstValueFrom(
+        this.locationService.reserveNearestDriver(
+          {
+            orderId: orderRow.id,
+            lat: payload.pickup.lat,
+            lng: payload.pickup.lng,
+            radiusM,
+          },
+          new Metadata(),
+        ).pipe(timeout(5000)),
+      );
+
+      if (response.found && response.driver) {
+        this.stateMachine.validateTransition(
+          orderRow.status,
+          OrderStatus.DRIVER_ASSIGNED,
+        );
+
+        const updatedRow = await this.orderRepository.updateDriverAndStatus(
+          orderRow.id,
+          response.driver.driverId,
+          OrderStatus.DRIVER_ASSIGNED,
+        );
+        this.logger.log(`Driver ${response.driver.driverId} assigned to order ${orderRow.id}`);
+        return this.toOrderDto(updatedRow!);
+      } else {
+        this.stateMachine.validateTransition(
+          orderRow.status,
+          OrderStatus.NO_DRIVER_AVAILABLE,
+        );
+
+        const updatedRow = await this.orderRepository.updateStatus(
+          orderRow.id,
+          OrderStatus.NO_DRIVER_AVAILABLE,
+        );
+        this.logger.log(`No driver available for order ${orderRow.id}`);
+        return this.toOrderDto(updatedRow!);
+      }
+    } catch (error) {
+      this.logger.error(`Error reserving driver for order ${orderRow.id}`, error);
+      const updatedRow = await this.orderRepository.updateStatus(
+        orderRow.id,
+        OrderStatus.NO_DRIVER_AVAILABLE,
+      );
+      return this.toOrderDto(updatedRow!);
+    }
+  }
+
+  async get(orderId: string, userId: string, role: Role): Promise<OrderDto> {
+    const orderRow = await this.orderRepository.findById(orderId);
+    if (!orderRow) {
+      throw new RpcException({
+        code: 'NOT_FOUND',
+        message: 'Order tidak ditemukan',
+      });
+    }
+
+    if (role === Role.CUSTOMER && orderRow.customer_id !== userId) {
+      throw new RpcException({ code: 'FORBIDDEN', message: 'Akses ditolak' });
+    }
+    if (role === Role.DRIVER && orderRow.driver_id !== userId) {
+      throw new RpcException({ code: 'FORBIDDEN', message: 'Akses ditolak' });
+    }
+
+    return this.toOrderDto(orderRow);
+  }
+
+  async list(userId: string, role: Role): Promise<OrderDto[]> {
+    if (role === Role.CUSTOMER) {
+      const rows = await this.orderRepository.findByCustomerId(userId);
+      return rows.map((r) => this.toOrderDto(r));
+    } else if (role === Role.DRIVER) {
+      const rows = await this.orderRepository.findByDriverId(userId);
+      return rows.map((r) => this.toOrderDto(r));
+    }
+    return [];
+  }
+
+  async updateStatus(payload: UpdateOrderStatusPayloadDto): Promise<OrderDto> {
+    const orderRow = await this.orderRepository.findById(payload.orderId);
+    if (!orderRow) {
+      throw new RpcException({ code: 'NOT_FOUND', message: 'Order tidak ditemukan' });
+    }
+
+    if (orderRow.driver_id !== payload.driverId) {
+      throw new RpcException({ code: 'FORBIDDEN', message: 'Akses ditolak' });
+    }
+
+    this.stateMachine.validateTransition(orderRow.status, payload.status);
+
+    const updatedRow = await this.orderRepository.updateStatus(
+      payload.orderId,
+      payload.status,
+    );
+
+    if (payload.status === OrderStatus.COMPLETED) {
+      try {
+        await firstValueFrom(
+          this.locationService.releaseDriver(
+            { orderId: payload.orderId },
+            new Metadata(),
+          ).pipe(timeout(5000)),
+        );
+        this.logger.log(`Released driver for order ${payload.orderId}`);
+      } catch (error) {
+        this.logger.error(`Error releasing driver for order ${payload.orderId}`, error);
+      }
+    }
+
+    return this.toOrderDto(updatedRow!);
   }
 }

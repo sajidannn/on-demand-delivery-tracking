@@ -4,11 +4,12 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
 import { GatewayController } from './gateway.controller.js';
 import { GatewayService } from './gateway.service.js';
 import { AuthController } from './auth.controller.js';
-import { AUTH_SERVICE_TOKEN, LOCATION_SERVICE_NAME } from '@app/common';
+import { AUTH_SERVICE_TOKEN, LOCATION_SERVICE_NAME, ORDER_SERVICE_TOKEN } from '@app/common';
 import { fileURLToPath } from 'url';
 import { join, dirname } from 'path';
 import { existsSync } from 'fs';
 import { DriverController } from './driver.controller.js';
+import { OrderController } from './order.controller.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // Cari proto di dist/ dulu (setelah build), fallback ke source saat dev
@@ -37,6 +38,17 @@ const locationProtoPath = existsSync(distProtoPath)
         }),
       },
       {
+        name: ORDER_SERVICE_TOKEN,
+        inject: [ConfigService],
+        useFactory: (config: ConfigService) => ({
+          transport: Transport.TCP,
+          options: {
+            host: config.get('ORDER_HOST', 'localhost'),
+            port: config.get<number>('ORDER_PORT', 4002),
+          },
+        }),
+      },
+      {
         name: LOCATION_SERVICE_NAME,
         inject: [ConfigService],
         useFactory: (config: ConfigService) => ({
@@ -50,7 +62,7 @@ const locationProtoPath = existsSync(distProtoPath)
       },
     ]),
   ],
-  controllers: [GatewayController, AuthController, DriverController],
+  controllers: [GatewayController, AuthController, DriverController, OrderController],
   providers: [GatewayService],
 })
 export class GatewayModule {}

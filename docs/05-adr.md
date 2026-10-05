@@ -65,3 +65,8 @@ Format: Konteks → Keputusan → Konsekuensi. Status semua: **Accepted**. Janga
 **Konteks:** Kebutuhan linter yang sangat cepat tanpa membebani CI/CD lokal.
 **Keputusan:** Menggantikan ESLint dengan `oxlint` (via opsi cli nest) yang ditulis dalam Rust.
 **Konsekuensi:** Lint instan (sub-detik). Harus secara manual menambah rule (seperti `typescript/no-explicit-any` diubah ke `warn`).
+
+## ADR-013 — Reservasi driver atomik di Location
+**Konteks:** Menghindari race condition saat dua order mencoba mencari dan mengunci driver yang sama secara bersamaan, serta memastikan satu driver hanya melayani satu order aktif.
+**Keputusan:** Menambah kolom `current_order_id` pada `driver_locations`. Menggunakan `FOR UPDATE SKIP LOCKED` dalam satu statement SQL atomik untuk menemukan dan langsung mereservasi driver terdekat. Alternatif yang ditolak: mengubah `is_available`, karena ini harus murni mewakili niat (online/offline).
+**Konsekuensi:** Lokasi punya dua operasi baru: reserve dan release. Order Service bertanggung jawab melepas driver (`ReleaseDriver`) ketika order sudah `COMPLETED` atau jika terjadi error setelah reservasi berhasil (kompensasi).

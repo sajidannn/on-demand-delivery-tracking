@@ -1,0 +1,69 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "type": "shell",
+      "label": "bun: start:debug (interactive)",
+      "command": "bun run nest start ${input:serviceName} --debug ${input:debugPort} --watch",
+      "options": {
+        "env": {
+          "PATH": "${env:HOME}/.local/share/mise/shims:${env:PATH}"
+        }
+      },
+      "problemMatcher": ["$ts-loader-watch"],
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "type": "shell",
+      "label": "docker: compose up",
+      "command": "docker compose up -d",
+      "problemMatcher": []
+    },
+    {
+      "type": "shell",
+      "label": "docker: compose down",
+      "command": "docker compose down",
+      "problemMatcher": []
+    },
+    {
+      "type": "shell",
+      "label": "bun: test",
+      "command": "bun run test",
+      "options": {
+        "env": {
+          "PATH": "${env:HOME}/.local/share/mise/shims:${env:PATH}"
+        }
+      },
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "serviceName",
+      "description": "Pilih service yang ingin dijalankan:",
+      "type": "pickString",
+      "options": [
+        "location-service",
+        "gateway",
+        "auth-service",
+        "order-service",
+        "notification-service"
+      ],
+      "default": "location-service"
+    },
+    {
+      "id": "debugPort",
+      "description": "Port debugging inspector:",
+      "type": "promptString",
+      "default": "9232"
+    }
+  ]
+}

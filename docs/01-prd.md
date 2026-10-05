@@ -50,6 +50,8 @@ Alur order → assign driver → antar → selesai berjalan end-to-end secara lo
 - AC-06: Setiap perubahan status memunculkan event dan tercatat di log Notification Service.
 - AC-07: Customer yang subscribe ke `order:{id}` menerima `order:location` saat driver mengirim ping.
 - AC-08: Semua endpoint Gateway muncul di Swagger (`/docs`) lengkap dengan contoh request/response.
+- AC-09: Satu driver tidak boleh menerima dua order aktif sekaligus (kunci driver pada satu pesanan).
+- AC-10: Driver akan kembali berstatus dapat menerima pesanan setelah status order menjadi `COMPLETED`.
 
 ## 7. Definition of Done (proyek)
 - `docker compose up -d` + satu perintah start menjalankan semua service.

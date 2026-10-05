@@ -56,13 +56,14 @@ Request terlindungi: Gateway guard → TCP `auth.validate_token` → `{ userId, 
 ### 4.3 Buat order dan auto-assign
 1. Customer `POST /orders` → Gateway (guard) → TCP `order.create` (`customerId` diambil dari token).
 2. Order: hitung jarak (`ST_Distance`), simpan `PENDING`.
-3. Order → gRPC `FindNearestDrivers(pickup, radius, limit=1)`.
-4. Ada driver → status `DRIVER_ASSIGNED`, `driver_id` diisi, emit `order.driver_assigned`. Tidak ada → `NO_DRIVER_AVAILABLE`.
+3. Order → gRPC `ReserveNearestDriver(pickup, radius)`. Location mengunci satu driver secara atomik.
+4. Ada driver (`found: true`) → status `DRIVER_ASSIGNED`, `driver_id` diisi, emit `order.driver_assigned`. Jika update DB gagal, kompensasi dengan `ReleaseDriver`. Jika tidak ada driver → `NO_DRIVER_AVAILABLE`.
 5. Order emit event ke `notification_queue` dan `gateway_queue`.
 6. Notification: log. Gateway: push `order:status` ke room `order:{id}` dan ke driver.
 
 ### 4.4 Update status
 Driver `PATCH /orders/:id/status` → Order validasi (driver = yang di-assign, transisi legal) → simpan → emit `order.status_changed`.
+Bila status berubah ke `COMPLETED`, panggil gRPC `ReleaseDriver` ke Location (best-effort) agar driver bebas untuk pesanan baru.
 
 ### 4.5 Tracking real-time
 1. Driver kirim WS `driver:location {lat,lng,orderId?}`.

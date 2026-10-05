@@ -1,0 +1,243 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug: Location Service (Launch)",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/node_modules/@nestjs/cli/bin/nest.js",
+      "args": ["start", "location-service", "--debug", "9232", "--watch"],
+      "autoAttachChildProcesses": true,
+      "restart": true,
+      "sourceMaps": true,
+      "sourceMapPathOverrides": {
+        "webpack://on-demand-delivery-tracking/./*": "${workspaceFolder}/*",
+        "webpack:///*": "${workspaceFolder}/*",
+        "webpack:///./*": "${workspaceFolder}/*"
+      },
+      "env": {
+        "PATH": "${env:HOME}/.local/share/mise/shims:${env:PATH}"
+      },
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
+    },
+    {
+      "name": "Debug: Gateway (Launch)",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/node_modules/@nestjs/cli/bin/nest.js",
+      "args": ["start", "gateway", "--debug", "9229", "--watch"],
+      "autoAttachChildProcesses": true,
+      "restart": true,
+      "sourceMaps": true,
+      "sourceMapPathOverrides": {
+        "webpack://on-demand-delivery-tracking/./*": "${workspaceFolder}/*",
+        "webpack:///*": "${workspaceFolder}/*",
+        "webpack:///./*": "${workspaceFolder}/*"
+      },
+      "env": {
+        "PATH": "${env:HOME}/.local/share/mise/shims:${env:PATH}"
+      },
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
+    },
+    {
+      "name": "Debug: Auth Service (Launch)",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/node_modules/@nestjs/cli/bin/nest.js",
+      "args": ["start", "auth-service", "--debug", "9230", "--watch"],
+      "autoAttachChildProcesses": true,
+      "restart": true,
+      "sourceMaps": true,
+      "sourceMapPathOverrides": {
+        "webpack://on-demand-delivery-tracking/./*": "${workspaceFolder}/*",
+        "webpack:///*": "${workspaceFolder}/*",
+        "webpack:///./*": "${workspaceFolder}/*"
+      },
+      "env": {
+        "PATH": "${env:HOME}/.local/share/mise/shims:${env:PATH}"
+      },
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
+    },
+    {
+      "name": "Debug: Order Service (Launch)",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/node_modules/@nestjs/cli/bin/nest.js",
+      "args": ["start", "order-service", "--debug", "9231", "--watch"],
+      "autoAttachChildProcesses": true,
+      "restart": true,
+      "sourceMaps": true,
+      "sourceMapPathOverrides": {
+        "webpack://on-demand-delivery-tracking/./*": "${workspaceFolder}/*",
+        "webpack:///*": "${workspaceFolder}/*",
+        "webpack:///./*": "${workspaceFolder}/*"
+      },
+      "env": {
+        "PATH": "${env:HOME}/.local/share/mise/shims:${env:PATH}"
+      },
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
+    },
+    {
+      "name": "Debug: Notification Service (Launch)",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/node_modules/@nestjs/cli/bin/nest.js",
+      "args": ["start", "notification-service", "--debug", "9233", "--watch"],
+      "autoAttachChildProcesses": true,
+      "restart": true,
+      "sourceMaps": true,
+      "sourceMapPathOverrides": {
+        "webpack://on-demand-delivery-tracking/./*": "${workspaceFolder}/*",
+        "webpack:///*": "${workspaceFolder}/*",
+        "webpack:///./*": "${workspaceFolder}/*"
+      },
+      "env": {
+        "PATH": "${env:HOME}/.local/share/mise/shims:${env:PATH}"
+      },
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
+    },
+    {
+      "name": "Attach: Location Service (Port 9232)",
+      "type": "node",
+      "request": "attach",
+      "port": 9232,
+      "restart": true,
+      "sourceMaps": true,
+      "sourceMapPathOverrides": {
+        "webpack://on-demand-delivery-tracking/./*": "${workspaceFolder}/*",
+        "webpack:///*": "${workspaceFolder}/*",
+        "webpack:///./*": "${workspaceFolder}/*"
+      }
+    },
+    {
+      "name": "Attach: Gateway (Port 9229)",
+      "type": "node",
+      "request": "attach",
+      "port": 9229,
+      "restart": true,
+      "sourceMaps": true,
+      "sourceMapPathOverrides": {
+        "webpack://on-demand-delivery-tracking/./*": "${workspaceFolder}/*",
+        "webpack:///*": "${workspaceFolder}/*",
+        "webpack:///./*": "${workspaceFolder}/*"
+      }
+    },
+    {
+      "name": "Attach: Auth Service (Port 9230)",
+      "type": "node",
+      "request": "attach",
+      "port": 9230,
+      "restart": true,
+      "sourceMaps": true,
+      "sourceMapPathOverrides": {
+        "webpack://on-demand-delivery-tracking/./*": "${workspaceFolder}/*",
+        "webpack:///*": "${workspaceFolder}/*",
+        "webpack:///./*": "${workspaceFolder}/*"
+      }
+    },
+    {
+      "name": "Attach: Order Service (Port 9231)",
+      "type": "node",
+      "request": "attach",
+      "port": 9231,
+      "restart": true,
+      "sourceMaps": true,
+      "sourceMapPathOverrides": {
+        "webpack://on-demand-delivery-tracking/./*": "${workspaceFolder}/*",
+        "webpack:///*": "${workspaceFolder}/*",
+        "webpack:///./*": "${workspaceFolder}/*"
+      }
+    },
+    {
+      "name": "Attach: Notification Service (Port 9233)",
+      "type": "node",
+      "request": "attach",
+      "port": 9233,
+      "restart": true,
+      "sourceMaps": true,
+      "sourceMapPathOverrides": {
+        "webpack://on-demand-delivery-tracking/./*": "${workspaceFolder}/*",
+        "webpack:///*": "${workspaceFolder}/*",
+        "webpack:///./*": "${workspaceFolder}/*"
+      }
+    },
+    {
+      "name": "Attach: Pick Process (Auto-detect)",
+      "type": "node",
+      "request": "attach",
+      "processId": "${command:PickProcess}",
+      "restart": true,
+      "sourceMaps": true,
+      "sourceMapPathOverrides": {
+        "webpack://on-demand-delivery-tracking/./*": "${workspaceFolder}/*",
+        "webpack:///*": "${workspaceFolder}/*",
+        "webpack:///./*": "${workspaceFolder}/*"
+      }
+    },
+    {
+      "name": "Debug: Current Test File (Vitest)",
+      "type": "node",
+      "request": "launch",
+      "autoAttachChildProcesses": true,
+      "skipFiles": ["<node_internals>/**", "**/node_modules/**"],
+      "program": "${workspaceFolder}/node_modules/vitest/vitest.mjs",
+      "args": ["run", "${relativeFile}"],
+      "smartStep": true,
+      "env": {
+        "PATH": "${env:HOME}/.local/share/mise/shims:${env:PATH}"
+      },
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Debug: All Tests (Vitest)",
+      "type": "node",
+      "request": "launch",
+      "autoAttachChildProcesses": true,
+      "skipFiles": ["<node_internals>/**", "**/node_modules/**"],
+      "program": "${workspaceFolder}/node_modules/vitest/vitest.mjs",
+      "args": ["run"],
+      "smartStep": true,
+      "env": {
+        "PATH": "${env:HOME}/.local/share/mise/shims:${env:PATH}"
+      },
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Debug: E2E Tests (Vitest)",
+      "type": "node",
+      "request": "launch",
+      "autoAttachChildProcesses": true,
+      "skipFiles": ["<node_internals>/**", "**/node_modules/**"],
+      "program": "${workspaceFolder}/node_modules/vitest/vitest.mjs",
+      "args": ["run", "--config", "./vitest.config.e2e.ts", "--passWithNoTests"],
+      "smartStep": true,
+      "env": {
+        "PATH": "${env:HOME}/.local/share/mise/shims:${env:PATH}"
+      },
+      "console": "integratedTerminal"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Debug: Gateway + Location Service",
+      "configurations": [
+        "Debug: Gateway (Launch)",
+        "Debug: Location Service (Launch)"
+      ]
+    },
+    {
+      "name": "Debug: All Core Services",
+      "configurations": [
+        "Debug: Gateway (Launch)",
+        "Debug: Auth Service (Launch)",
+        "Debug: Location Service (Launch)",
+        "Debug: Order Service (Launch)"
+      ]
+    }
+  ]
+}

@@ -38,16 +38,23 @@ Tiap task selesai bila memenuhi _Definition of Done_ di `AGENTS.md`.
 
 **Selesai bila:** `grpcurl` mengembalikan driver terdekat yang urutannya benar.
 
-## Hari 4 — Order Service
+## Hari 4 — Order Service + Kunci Driver
 
+**Fase 4a: Location Service & Persiapan**
+- [ ] [W] Migrasi Location: tambah `current_order_id` & env `DRIVER_STALE_SECONDS`
+- [ ] [W] Update gRPC `location.proto`: `ReserveNearestDriver` dan `ReleaseDriver`
+- [ ] [W] Implementasi reserve atomik (`SKIP LOCKED`) dan release di Location Service
+- [ ] [N] Seed 3-5 driver dummy untuk tes (pindahan dari Hari 3)
+
+**Fase 4b: Order Service & Gateway**
 - [ ] [W] TypeORM koneksi `order_db`, migrasi tabel `orders` (geography)
 - [ ] [W] State machine (service terpisah, unit test transisi)
 - [ ] [W] TCP `order.create/get/list/update_status`
 - [ ] [W] Hitung `distance_m` (`ST_Distance`) dan `fee` flat
-- [ ] [W] gRPC client ke Location, auto-assign driver / `NO_DRIVER_AVAILABLE`
+- [ ] [W] gRPC client ke Location, panggil reserve saat create, release saat `COMPLETED`
 - [ ] [W] Gateway `OrderController` + guard role + Swagger
 
-**Selesai bila:** `POST /orders` menghasilkan `DRIVER_ASSIGNED` dengan driver terdekat; transisi ilegal 409.
+**Selesai bila:** `POST /orders` menghasilkan `DRIVER_ASSIGNED` dengan driver terdekat; transisi ilegal 409; driver yang di-assign tidak bisa menerima order lain secara bersamaan.
 
 ## Hari 5 — Event-Driven
 

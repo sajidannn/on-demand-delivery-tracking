@@ -107,10 +107,12 @@ CREATE INDEX ON orders (driver_id);
 CREATE TABLE driver_locations (
   driver_id    uuid PRIMARY KEY,
   is_available boolean NOT NULL DEFAULT false,
+  current_order_id uuid NULL,
   location     geography(Point,4326) NOT NULL,
   updated_at   timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX driver_locations_gix ON driver_locations USING GIST (location);
+CREATE INDEX driver_locations_order_idx ON driver_locations (current_order_id) WHERE current_order_id IS NOT NULL;
 ```
 
 Query inti:
@@ -121,19 +123,34 @@ VALUES ($1, $2, ST_SetSRID(ST_MakePoint($3,$4),4326)::geography)
 ON CONFLICT (driver_id) DO UPDATE
 SET location = EXCLUDED.location, updated_at = now();
 
--- driver terdekat (available, dalam radius, tidak stale)
-SELECT driver_id,
-       ST_Distance(location, p.pt) AS distance_m,
-       ST_Y(location::geometry) AS lat, ST_X(location::geometry) AS lng
-FROM driver_locations,
-     (SELECT ST_SetSRID(ST_MakePoint($1,$2),4326)::geography AS pt) p
-WHERE is_available = true
-  AND updated_at > now() - interval '60 seconds'
-  AND ST_DWithin(location, p.pt, $3)
-ORDER BY location <-> p.pt
-LIMIT $4;
+-- reserve driver terdekat (atomik)
+WITH p AS (SELECT ST_SetSRID(ST_MakePoint($2, $3), 4326)::geography AS pt),
+picked AS (
+  SELECT d.driver_id
+  FROM driver_locations d, p
+  WHERE d.is_available = true
+    AND d.current_order_id IS NULL
+    AND d.updated_at > now() - make_interval(secs => $5::double precision)
+    AND ST_DWithin(d.location, p.pt, $4)
+  ORDER BY d.location <-> p.pt
+  LIMIT 1
+  FOR UPDATE OF d SKIP LOCKED
+)
+UPDATE driver_locations dl
+SET current_order_id = $1::uuid
+FROM picked, p
+WHERE dl.driver_id = picked.driver_id
+RETURNING dl.driver_id,
+          ST_Distance(dl.location, p.pt) AS distance_m,
+          ST_Y(dl.location::geometry) AS lat,
+          ST_X(dl.location::geometry) AS lng;
+
+-- release driver berdasarkan order
+UPDATE driver_locations SET current_order_id = NULL
+WHERE current_order_id = $1::uuid
+RETURNING driver_id;
 ```
-Urutan `ST_MakePoint(lng, lat)`. Ping WS **tidak** boleh mengubah `is_available` (hanya `SetDriverAvailability` yang mengubahnya).
+Urutan `ST_MakePoint(lng, lat)`. Ping WS **tidak** boleh mengubah `is_available` atau `current_order_id`. Reserve dan release **tidak mengubah** `updated_at`.
 
 ## 5. REST API (Gateway)
 
@@ -216,6 +233,8 @@ package location;
 service LocationService {
   rpc FindNearestDrivers (FindNearestDriversRequest) returns (FindNearestDriversResponse);
   rpc SetDriverAvailability (SetDriverAvailabilityRequest) returns (SetDriverAvailabilityResponse);
+  rpc ReserveNearestDriver (ReserveNearestDriverRequest) returns (ReserveNearestDriverResponse);
+  rpc ReleaseDriver (ReleaseDriverRequest) returns (ReleaseDriverResponse);
 }
 
 message FindNearestDriversRequest { double lat = 1; double lng = 2; int32 radius_m = 3; int32 limit = 4; }
@@ -224,6 +243,11 @@ message FindNearestDriversResponse { repeated NearbyDriver drivers = 1; }
 
 message SetDriverAvailabilityRequest { string driver_id = 1; bool is_available = 2; double lat = 3; double lng = 4; }
 message SetDriverAvailabilityResponse { bool ok = 1; }
+
+message ReserveNearestDriverRequest { string order_id = 1; double lat = 2; double lng = 3; int32 radius_m = 4; }
+message ReserveNearestDriverResponse { bool found = 1; NearbyDriver driver = 2; }
+message ReleaseDriverRequest { string order_id = 1; }
+message ReleaseDriverResponse { bool released = 1; }
 ```
 Radius default pencarian: `SEARCH_RADIUS_M=3000`, `limit=1`.
 Karena ESM, path file proto dirujuk dengan `import.meta.dirname` (atau `fileURLToPath(import.meta.url)`), bukan `__dirname`; pastikan file `.proto` ikut tersalin ke output build (assets di `nest-cli.json`).
@@ -276,6 +300,7 @@ FLAT_FEE=10000
 SEARCH_RADIUS_M=3000
 # location
 LOCATION_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/location_db
+DRIVER_STALE_SECONDS=60
 ```
 
 ## 13. Perintah Standar

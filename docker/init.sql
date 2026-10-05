@@ -7,3 +7,7 @@ CREATE EXTENSION IF NOT EXISTS postgis;
 
 \c location_db
 CREATE EXTENSION IF NOT EXISTS postgis;
+
+CREATE DATABASE location_test_db;
+\c location_test_db
+CREATE EXTENSION IF NOT EXISTS postgis;

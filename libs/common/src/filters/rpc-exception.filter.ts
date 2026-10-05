@@ -13,7 +13,6 @@ const HTTP_STATUS_TO_CODE: Record<number, string> = {
   [HttpStatus.UNAUTHORIZED]: 'UNAUTHORIZED',
   [HttpStatus.FORBIDDEN]: 'FORBIDDEN',
   [HttpStatus.NOT_FOUND]: 'NOT_FOUND',
-  [HttpStatus.CONFLICT]: 'CONFLICT',
   [HttpStatus.SERVICE_UNAVAILABLE]: 'SERVICE_UNAVAILABLE',
 };
 
@@ -26,6 +25,15 @@ const RPC_CODE_TO_STATUS: Record<string, number> = {
   EMAIL_TAKEN: HttpStatus.CONFLICT,
   INVALID_STATUS_TRANSITION: HttpStatus.CONFLICT,
   SERVICE_UNAVAILABLE: HttpStatus.SERVICE_UNAVAILABLE,
+};
+
+/** Pemetaan status numerik gRPC ke kode string */
+const GRPC_CODE_TO_STRING: Record<number, string> = {
+  3: 'VALIDATION_ERROR',
+  5: 'NOT_FOUND',
+  7: 'FORBIDDEN',
+  14: 'SERVICE_UNAVAILABLE',
+  16: 'UNAUTHORIZED',
 };
 
 @Catch()
@@ -74,13 +82,21 @@ export class RpcExceptionToHttpFilter implements ExceptionFilter {
     }
 
     // 3. Error dari microservice TCP/gRPC (objek murni dari RpcException)
-    const hasKnownCode =
-      typeof err?.code === 'string' && err.code in RPC_CODE_TO_STATUS;
-    const code = hasKnownCode ? (err.code as string) : 'INTERNAL';
-    const message =
+    let code = 'INTERNAL';
+    if (typeof err?.code === 'string' && err.code in RPC_CODE_TO_STATUS) {
+      code = err.code as string;
+    } else if (typeof err?.code === 'number') {
+      code = GRPC_CODE_TO_STRING[err.code as number] || 'INTERNAL';
+    }
+
+    let message =
       typeof err?.message === 'string'
         ? err.message
         : 'Terjadi kesalahan internal';
+    
+    // Hapus prefix gRPC seperti "3 INVALID_ARGUMENT: " dari message
+    message = message.replace(/^\d+\s+[A-Z_]+:\s*/, '');
+
     const status = RPC_CODE_TO_STATUS[code] ?? HttpStatus.INTERNAL_SERVER_ERROR;
 
     response.status(status).json({

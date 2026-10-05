@@ -250,6 +250,7 @@ Order memakai dua `ClientProxy` RMQ (satu per queue tujuan). Nama queue dan even
 | `EMAIL_TAKEN` | 409 | email sudah terdaftar |
 | `INVALID_STATUS_TRANSITION` | 409 | transisi state ilegal |
 | `INTERNAL` | 500 | error lain |
+| `SERVICE_UNAVAILABLE` | 503 | service down/timeout |
 
 Bentuk respons error: `{ statusCode, code, message }`.
 

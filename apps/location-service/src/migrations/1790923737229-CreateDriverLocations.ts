@@ -2,6 +2,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class CreateDriverLocations1790923737229 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`CREATE EXTENSION IF NOT EXISTS postgis;`);
     await queryRunner.query(`
             CREATE TABLE driver_locations (
                 driver_id    uuid PRIMARY KEY,

@@ -33,8 +33,9 @@ export class AuthServiceService {
         name: user.name,
         role: user.role as CommonRole,
       };
-    } catch (error: any) {
-      if (error.code === 'P2002') {
+    } catch (error) {
+      const err = error as Record<string, unknown>;
+      if (err.code === 'P2002') {
         throw new RpcException({
           code: 'EMAIL_TAKEN',
           message: 'Email sudah terdaftar',

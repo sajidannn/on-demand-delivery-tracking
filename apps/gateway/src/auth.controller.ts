@@ -8,7 +8,6 @@ import {
   HttpStatus,
   Inject,
   Post,
-  ServiceUnavailableException,
 } from '@nestjs/common';
 import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
 import {
@@ -25,6 +24,9 @@ import {
   RegisterDto,
   LoginDto,
   Role,
+  UserResponseDto,
+  TokenResponseDto,
+  ErrorResponseDto,
 } from '@app/common';
 
 /** Shape user yang disimpan di request setelah JwtAuthGuard */
@@ -43,12 +45,13 @@ export class AuthController {
   @ApiOperation({ summary: 'Mendaftarkan user baru (Customer/Driver)' })
   @ApiResponse({
     status: 201,
-    description:
-      'User berhasil didaftarkan — mengembalikan {id, email, name, role}',
+    description: 'User berhasil didaftarkan',
+    type: UserResponseDto,
   })
   @ApiResponse({
     status: 400,
     description: 'Validasi gagal (VALIDATION_ERROR)',
+    type: ErrorResponseDto,
   })
   @ApiResponse({
     status: 409,
@@ -65,15 +68,18 @@ export class AuthController {
   @ApiOperation({ summary: 'Login dan dapatkan JWT access token' })
   @ApiResponse({
     status: 200,
-    description: 'Berhasil login — mengembalikan {accessToken}',
+    description: 'Berhasil login',
+    type: TokenResponseDto,
   })
   @ApiResponse({
     status: 400,
     description: 'Validasi gagal (VALIDATION_ERROR)',
+    type: ErrorResponseDto,
   })
   @ApiResponse({
     status: 401,
     description: 'Kredensial tidak valid (UNAUTHORIZED)',
+    type: ErrorResponseDto,
   })
   async login(@Body() data: LoginDto) {
     return firstValueFrom(
@@ -89,23 +95,23 @@ export class AuthController {
   })
   @ApiResponse({
     status: 200,
-    description:
-      'Profil berhasil diambil — mengembalikan {id, email, name, role}',
+    description: 'Profil berhasil diambil',
+    type: UserResponseDto,
   })
   @ApiResponse({
     status: 401,
     description: 'Token tidak ada atau tidak valid (UNAUTHORIZED)',
+    type: ErrorResponseDto,
   })
   @ApiResponse({
     status: 503,
     description: 'Auth service tidak tersedia (SERVICE_UNAVAILABLE)',
+    type: ErrorResponseDto,
   })
   async getMe(@Req() req: AuthenticatedRequest) {
     const { userId } = req.user;
     return firstValueFrom(
       this.authClient.send(PATTERNS.AUTH.ME, { userId }).pipe(timeout(5000)),
-    ).catch(() => {
-      throw new ServiceUnavailableException('Auth service tidak tersedia');
-    });
+    );
   }
 }

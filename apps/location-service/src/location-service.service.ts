@@ -5,6 +5,7 @@ import type {
   NearbyDriver,
   SetDriverAvailabilityRequest,
 } from '@app/common';
+import { status } from '@grpc/grpc-js';
 import { DriverLocationRepository } from './driver-location.repository.js';
 
 const DEFAULT_RADIUS_M = 3000;
@@ -47,7 +48,7 @@ export class LocationServiceService {
   private assertCoordinate(lat: number, lng: number): void {
     if (!(lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180)) {
       throw new RpcException({
-        code: 'VALIDATION_ERROR',
+        code: status.INVALID_ARGUMENT,
         message: 'Invalid coordinate',
       });
     }

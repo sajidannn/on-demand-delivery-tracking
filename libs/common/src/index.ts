@@ -5,5 +5,6 @@ export * from './constants/index.js';
 export * from './dto/register.dto.js';
 export * from './dto/login.dto.js';
 export * from './dto/driver-location.dto.js';
+export * from './dto/response.dto.js';
 export * from './filters/rpc-exception.filter.js';
 export * from './proto/location.pb.js';

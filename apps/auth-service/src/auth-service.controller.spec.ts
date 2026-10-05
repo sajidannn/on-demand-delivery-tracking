@@ -114,6 +114,22 @@ describe('AuthServiceController', () => {
         service.login({ email: 'a@b.com', password: 'wrongpassword' }),
       ).rejects.toMatchObject({ error: { code: 'UNAUTHORIZED' } });
     });
+
+    it('should return access token on valid credentials', async () => {
+      const bcrypt = await import('bcrypt');
+      const hash = await bcrypt.hash('pass123', 1); // dummy hash fast
+      prismaMock.user.findUnique.mockResolvedValue({
+        id: 'uuid-1',
+        email: 'a@b.com',
+        passwordHash: hash,
+        role: Role.CUSTOMER,
+      });
+      jwtMock.signAsync.mockResolvedValue('fake_token_123');
+
+      const result = await service.login({ email: 'a@b.com', password: 'pass123' });
+      expect(result).toEqual({ accessToken: 'fake_token_123' });
+      expect(jwtMock.signAsync).toHaveBeenCalledWith({ sub: 'uuid-1', role: Role.CUSTOMER });
+    });
   });
 
   // ── validateToken ──────────────────────────────────────────────────────────
@@ -135,6 +151,36 @@ describe('AuthServiceController', () => {
 
       const result = await service.validateToken('valid.token.here');
       expect(result).toEqual({ userId: 'uuid-1', role: Role.DRIVER });
+    });
+  });
+
+  // ── getMe ──────────────────────────────────────────────────────────────────
+
+  describe('getMe', () => {
+    it('should throw NOT_FOUND when user does not exist', async () => {
+      prismaMock.user.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.getMe('non-existent-id'),
+      ).rejects.toMatchObject({ error: { code: 'NOT_FOUND' } });
+    });
+
+    it('should return user data when user exists', async () => {
+      prismaMock.user.findUnique.mockResolvedValue({
+        id: 'uuid-2',
+        email: 'test@b.com',
+        name: 'Test',
+        role: Role.CUSTOMER,
+        passwordHash: 'abc'
+      });
+
+      const result = await service.getMe('uuid-2');
+      expect(result).toEqual({
+        id: 'uuid-2',
+        email: 'test@b.com',
+        name: 'Test',
+        role: Role.CUSTOMER,
+      });
     });
   });
 });

@@ -14,7 +14,7 @@ services:
     restart: unless-stopped
 
   rabbitmq:
-    image: rabbitmq:3-management
+    image: rabbitmq:management
     container_name: oddt-rabbitmq
     ports:
       - '5672:5672'

@@ -30,8 +30,9 @@ export class OrderServiceService implements OnModuleInit {
   ) {}
 
   onModuleInit() {
-    this.locationService =
-      this.client.getService<LocationServiceClient>(LOCATION_SERVICE_NAME);
+    this.locationService = this.client.getService<LocationServiceClient>(
+      LOCATION_SERVICE_NAME,
+    );
   }
 
   private toOrderDto(row: OrderRow): OrderDto {
@@ -49,6 +50,20 @@ export class OrderServiceService implements OnModuleInit {
     };
   }
 
+  private async releaseQuietly(orderId: string): Promise<void> {
+    try {
+      await firstValueFrom(
+        callService(
+          this.locationService.releaseDriver({ orderId }, new Metadata()),
+          'location-service',
+          3000,
+        ),
+      );
+    } catch (e) {
+      this.logger.error(`Gagal melepas driver untuk order ${orderId}`, e);
+    }
+  }
+
   async create(payload: CreateOrderPayloadDto): Promise<OrderDto> {
     const orderRow = await this.orderRepository.createOrder(
       payload.customerId,
@@ -57,10 +72,12 @@ export class OrderServiceService implements OnModuleInit {
       payload.dropoff.lat,
       payload.dropoff.lng,
     );
-    this.logger.log(`Order created: ${orderRow.id} for customer ${payload.customerId}`);
+    this.logger.log(
+      `Order created: ${orderRow.id} for customer ${payload.customerId}`,
+    );
 
-    const radiusM = this.configService.get<number>('SEARCH_RADIUS_M', 3000);
-    
+    const radiusM = Number(this.configService.get('SEARCH_RADIUS_M', 3000));
+
     try {
       const response = await firstValueFrom(
         callService(
@@ -89,7 +106,9 @@ export class OrderServiceService implements OnModuleInit {
           response.driver.driverId,
           OrderStatus.DRIVER_ASSIGNED,
         );
-        this.logger.log(`Driver ${response.driver.driverId} assigned to order ${orderRow.id}`);
+        this.logger.log(
+          `Driver ${response.driver.driverId} assigned to order ${orderRow.id}`,
+        );
         return this.toOrderDto(updatedRow!);
       } else {
         this.stateMachine.validateTransition(
@@ -105,19 +124,17 @@ export class OrderServiceService implements OnModuleInit {
         return this.toOrderDto(updatedRow!);
       }
     } catch (error) {
-      this.logger.error(`Error reserving driver for order ${orderRow.id}`, error);
+      this.logger.error(
+        `Error reserving driver for order ${orderRow.id}`,
+        error,
+      );
+
+      await this.releaseQuietly(orderRow.id);
+
       const updatedRow = await this.orderRepository.updateStatus(
         orderRow.id,
         OrderStatus.NO_DRIVER_AVAILABLE,
       );
-
-      const err = error as any;
-      if (
-        err.code === 'SERVICE_UNAVAILABLE' ||
-        (err instanceof RpcException && (err.getError() as any)?.code === 'SERVICE_UNAVAILABLE')
-      ) {
-        throw error;
-      }
 
       return this.toOrderDto(updatedRow!);
     }
@@ -156,7 +173,10 @@ export class OrderServiceService implements OnModuleInit {
   async updateStatus(payload: UpdateOrderStatusPayloadDto): Promise<OrderDto> {
     const orderRow = await this.orderRepository.findById(payload.orderId);
     if (!orderRow) {
-      throw new RpcException({ code: 'NOT_FOUND', message: 'Order tidak ditemukan' });
+      throw new RpcException({
+        code: 'NOT_FOUND',
+        message: 'Order tidak ditemukan',
+      });
     }
 
     if (orderRow.driver_id !== payload.driverId) {
@@ -171,21 +191,7 @@ export class OrderServiceService implements OnModuleInit {
     );
 
     if (payload.status === OrderStatus.COMPLETED) {
-      try {
-        await firstValueFrom(
-          callService(
-            this.locationService.releaseDriver(
-              { orderId: payload.orderId },
-              new Metadata(),
-            ),
-            'location-service',
-            5000,
-          ),
-        );
-        this.logger.log(`Released driver for order ${payload.orderId}`);
-      } catch (error) {
-        this.logger.error(`Error releasing driver for order ${payload.orderId}`, error);
-      }
+      await this.releaseQuietly(payload.orderId);
     }
 
     return this.toOrderDto(updatedRow!);

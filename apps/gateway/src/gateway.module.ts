@@ -4,7 +4,11 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
 import { GatewayController } from './gateway.controller.js';
 import { GatewayService } from './gateway.service.js';
 import { AuthController } from './auth.controller.js';
-import { AUTH_SERVICE_TOKEN, LOCATION_SERVICE_NAME, ORDER_SERVICE_TOKEN } from '@app/common';
+import {
+  AUTH_SERVICE_TOKEN,
+  LOCATION_SERVICE_NAME,
+  ORDER_SERVICE_TOKEN,
+} from '@app/common';
 import { fileURLToPath } from 'url';
 import { join, dirname } from 'path';
 import { existsSync } from 'fs';
@@ -62,7 +66,12 @@ const locationProtoPath = existsSync(distProtoPath)
       },
     ]),
   ],
-  controllers: [GatewayController, AuthController, DriverController, OrderController],
+  controllers: [
+    GatewayController,
+    AuthController,
+    DriverController,
+    OrderController,
+  ],
   providers: [GatewayService],
 })
 export class GatewayModule {}

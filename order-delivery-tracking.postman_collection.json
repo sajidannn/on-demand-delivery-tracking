@@ -26,14 +26,9 @@
             "header": [],
             "url": {
               "raw": "localhost:3000/drivers/offline",
-              "host": [
-                "localhost"
-              ],
+              "host": ["localhost"],
               "port": "3000",
-              "path": [
-                "drivers",
-                "offline"
-              ]
+              "path": ["drivers", "offline"]
             }
           },
           "response": []
@@ -64,14 +59,9 @@
             },
             "url": {
               "raw": "localhost:3000/drivers/online",
-              "host": [
-                "localhost"
-              ],
+              "host": ["localhost"],
               "port": "3000",
-              "path": [
-                "drivers",
-                "online"
-              ]
+              "path": ["drivers", "online"]
             }
           },
           "response": []
@@ -98,14 +88,9 @@
             "header": [],
             "url": {
               "raw": "localhost:3000/auth/me",
-              "host": [
-                "localhost"
-              ],
+              "host": ["localhost"],
               "port": "3000",
-              "path": [
-                "auth",
-                "me"
-              ]
+              "path": ["auth", "me"]
             }
           },
           "response": []
@@ -126,14 +111,9 @@
             },
             "url": {
               "raw": "localhost:3000/auth/register",
-              "host": [
-                "localhost"
-              ],
+              "host": ["localhost"],
               "port": "3000",
-              "path": [
-                "auth",
-                "register"
-              ]
+              "path": ["auth", "register"]
             }
           },
           "response": []
@@ -165,14 +145,9 @@
             },
             "url": {
               "raw": "localhost:3000/auth/login",
-              "host": [
-                "localhost"
-              ],
+              "host": ["localhost"],
               "port": "3000",
-              "path": [
-                "auth",
-                "login"
-              ]
+              "path": ["auth", "login"]
             }
           },
           "response": []
@@ -204,14 +179,9 @@
             },
             "url": {
               "raw": "localhost:3000/auth/login",
-              "host": [
-                "localhost"
-              ],
+              "host": ["localhost"],
               "port": "3000",
-              "path": [
-                "auth",
-                "login"
-              ]
+              "path": ["auth", "login"]
             }
           },
           "response": []
@@ -247,13 +217,9 @@
             },
             "url": {
               "raw": "localhost:3000/orders",
-              "host": [
-                "localhost"
-              ],
+              "host": ["localhost"],
               "port": "3000",
-              "path": [
-                "orders"
-              ]
+              "path": ["orders"]
             }
           },
           "response": []
@@ -275,13 +241,9 @@
             "header": [],
             "url": {
               "raw": "localhost:3000/orders",
-              "host": [
-                "localhost"
-              ],
+              "host": ["localhost"],
               "port": "3000",
-              "path": [
-                "orders"
-              ]
+              "path": ["orders"]
             }
           },
           "response": []
@@ -303,14 +265,9 @@
             "header": [],
             "url": {
               "raw": "localhost:3000/orders/:id",
-              "host": [
-                "localhost"
-              ],
+              "host": ["localhost"],
               "port": "3000",
-              "path": [
-                "orders",
-                ":id"
-              ],
+              "path": ["orders", ":id"],
               "variable": [
                 {
                   "key": "id",
@@ -347,15 +304,9 @@
             },
             "url": {
               "raw": "localhost:3000/orders/:id/status",
-              "host": [
-                "localhost"
-              ],
+              "host": ["localhost"],
               "port": "3000",
-              "path": [
-                "orders",
-                ":id",
-                "status"
-              ],
+              "path": ["orders", ":id", "status"],
               "variable": [
                 {
                   "key": "id",

@@ -10,6 +10,7 @@ import {
   Post,
 } from '@nestjs/common';
 import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
+import type { AuthenticatedRequest } from './interfaces/authenticated-request.interface.js';
 import {
   ApiTags,
   ApiOperation,
@@ -29,11 +30,6 @@ import {
   ErrorResponseDto,
   callService,
 } from '@app/common';
-
-/** Shape user yang disimpan di request setelah JwtAuthGuard */
-interface AuthenticatedRequest {
-  user: { userId: string; role: Role };
-}
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -60,7 +56,11 @@ export class AuthController {
   })
   async register(@Body() data: RegisterDto): Promise<UserResponseDto> {
     return firstValueFrom(
-      callService(this.authClient.send<UserResponseDto>(PATTERNS.AUTH.REGISTER, data), 'auth-service', 5000),
+      callService(
+        this.authClient.send<UserResponseDto>(PATTERNS.AUTH.REGISTER, data),
+        'auth-service',
+        5000,
+      ),
     );
   }
 
@@ -84,7 +84,11 @@ export class AuthController {
   })
   async login(@Body() data: LoginDto): Promise<TokenResponseDto> {
     return firstValueFrom(
-      callService(this.authClient.send<TokenResponseDto>(PATTERNS.AUTH.LOGIN, data), 'auth-service', 5000),
+      callService(
+        this.authClient.send<TokenResponseDto>(PATTERNS.AUTH.LOGIN, data),
+        'auth-service',
+        5000,
+      ),
     );
   }
 
@@ -112,7 +116,11 @@ export class AuthController {
   async getMe(@Req() req: AuthenticatedRequest): Promise<UserResponseDto> {
     const { userId } = req.user;
     return firstValueFrom(
-      callService(this.authClient.send<UserResponseDto>(PATTERNS.AUTH.ME, { userId }), 'auth-service', 5000),
+      callService(
+        this.authClient.send<UserResponseDto>(PATTERNS.AUTH.ME, { userId }),
+        'auth-service',
+        5000,
+      ),
     );
   }
 }

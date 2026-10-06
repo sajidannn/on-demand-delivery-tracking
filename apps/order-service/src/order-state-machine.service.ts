@@ -21,7 +21,7 @@ export class OrderStateMachine {
     };
 
     const allowed = validTransitions[currentStatus] || [];
-    
+
     if (!allowed.includes(newStatus)) {
       throw new RpcException({
         code: 'INVALID_STATUS_TRANSITION',

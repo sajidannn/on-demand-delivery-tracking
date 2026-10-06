@@ -18,21 +18,11 @@
     "skipLibCheck": true,
     "strict": true,
     "strictPropertyInitialization": false,
-    "types": [
-      "vitest/globals",
-      "node"
-    ],
+    "types": ["vitest/globals", "node"],
     "paths": {
-      "@app/common": [
-        "./libs/common/src/index.ts"
-      ],
-      "@app/common/*": [
-        "./libs/common/src/*"
-      ]
+      "@app/common": ["./libs/common/src/index.ts"],
+      "@app/common/*": ["./libs/common/src/*"]
     }
   },
-  "include": [
-    "apps/**/*",
-    "libs/**/*"
-  ]
+  "include": ["apps/**/*", "libs/**/*"]
 }

@@ -71,12 +71,13 @@ export class DriverLocationRepository {
   }
 
   async releaseByOrder(orderId: string): Promise<boolean> {
-    const rows = await this.dataSource.query(
+    const raw = await this.dataSource.query(
       `UPDATE driver_locations SET current_order_id = NULL
        WHERE current_order_id = $1::uuid
        RETURNING driver_id;`,
       [orderId],
     );
+    const rows = Array.isArray(raw[0]) ? raw[0] : raw;
     return rows.length > 0;
   }
 

@@ -1,9 +1,8 @@
-import { MigrationInterface, QueryRunner } from "typeorm";
+import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class CreateOrdersTable1791189341383 implements MigrationInterface {
-
-    public async up(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`
             CREATE TYPE order_status AS ENUM
              ('PENDING','DRIVER_ASSIGNED','PICKED_UP','COMPLETED','NO_DRIVER_AVAILABLE');
 
@@ -22,13 +21,12 @@ export class CreateOrdersTable1791189341383 implements MigrationInterface {
             CREATE INDEX orders_customer_idx ON orders (customer_id);
             CREATE INDEX orders_driver_idx ON orders (driver_id);
         `);
-    }
+  }
 
-    public async down(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`
             DROP TABLE orders;
             DROP TYPE order_status;
         `);
-    }
-
+  }
 }

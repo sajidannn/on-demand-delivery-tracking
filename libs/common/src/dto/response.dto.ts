@@ -35,8 +35,12 @@ export class ErrorResponseDto {
   @ApiProperty({
     oneOf: [
       { type: 'string', example: 'Invalid coordinate' },
-      { type: 'array', items: { type: 'string' }, example: ['Lat must be a number'] }
-    ]
+      {
+        type: 'array',
+        items: { type: 'string' },
+        example: ['Lat must be a number'],
+      },
+    ],
   })
   message!: string | string[];
 }

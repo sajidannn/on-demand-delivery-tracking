@@ -93,7 +93,7 @@ export class RpcExceptionToHttpFilter implements ExceptionFilter {
       typeof err?.message === 'string'
         ? err.message
         : 'Terjadi kesalahan internal';
-    
+
     // Hapus prefix gRPC seperti "3 INVALID_ARGUMENT: " dari message
     message = message.replace(/^\d+\s+[A-Z_]+:\s*/, '');
 

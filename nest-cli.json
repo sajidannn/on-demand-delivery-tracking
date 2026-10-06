@@ -6,9 +6,7 @@
     "deleteOutDir": true,
     "builder": "rspack",
     "tsConfigPath": "apps/gateway/tsconfig.app.json",
-    "assets": [
-      { "include": "**/*.proto", "watchAssets": true }
-    ]
+    "assets": [{ "include": "**/*.proto", "watchAssets": true }]
   },
   "monorepo": true,
   "root": "apps/gateway",
@@ -48,7 +46,11 @@
       "compilerOptions": {
         "tsConfigPath": "apps/location-service/tsconfig.app.json",
         "assets": [
-          { "include": "../../../libs/common/src/proto/*.proto", "outDir": "./dist/apps/location-service", "watchAssets": true }
+          {
+            "include": "../../../libs/common/src/proto/*.proto",
+            "outDir": "./dist/apps/location-service",
+            "watchAssets": true
+          }
         ]
       }
     },

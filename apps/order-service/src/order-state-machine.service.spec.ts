@@ -53,11 +53,13 @@ describe('OrderStateMachine', () => {
       try {
         stateMachine.validateTransition(from, to);
         expect.fail('Should have thrown RpcException');
-      } catch (err: any) {
+      } catch (err: unknown) {
         expect(err).toBeInstanceOf(RpcException);
-        expect(err.getError()).toMatchObject({
-          code: 'INVALID_STATUS_TRANSITION',
-        });
+        if (err instanceof RpcException) {
+          expect(err.getError()).toMatchObject({
+            code: 'INVALID_STATUS_TRANSITION',
+          });
+        }
       }
     };
 

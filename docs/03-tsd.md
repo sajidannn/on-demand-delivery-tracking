@@ -2,22 +2,23 @@
 
 ## 1. Stack
 
-| Area | Pilihan |
-|---|---|
-| Runtime/Lang | Node.js LTS, TypeScript (ESM) |
-| Package manager | Bun (`bun.lock`) |
-| Framework | NestJS (monorepo mode) |
-| Transport | `@nestjs/microservices`: TCP, gRPC, RMQ |
-| Realtime | `@nestjs/websockets` + `@nestjs/platform-socket.io` |
-| DB | PostgreSQL + PostGIS (image `postgis/postgis`) |
-| ORM | Auth: **Prisma**; Order & Location: **TypeORM** (+ raw SQL untuk spasial) |
-| Broker | RabbitMQ (`rabbitmq:management`) |
-| Auth | `@nestjs/jwt`, `bcrypt` |
-| Validasi | `class-validator`, `class-transformer` |
-| Docs API | `@nestjs/swagger` (hanya di Gateway) |
-| Test | Vitest + supertest |
+| Area            | Pilihan                                                                   |
+| --------------- | ------------------------------------------------------------------------- |
+| Runtime/Lang    | Node.js LTS, TypeScript (ESM)                                             |
+| Package manager | Bun (`bun.lock`)                                                          |
+| Framework       | NestJS (monorepo mode)                                                    |
+| Transport       | `@nestjs/microservices`: TCP, gRPC, RMQ                                   |
+| Realtime        | `@nestjs/websockets` + `@nestjs/platform-socket.io`                       |
+| DB              | PostgreSQL + PostGIS (image `postgis/postgis`)                            |
+| ORM             | Auth: **Prisma**; Order & Location: **TypeORM** (+ raw SQL untuk spasial) |
+| Broker          | RabbitMQ (`rabbitmq:management`)                                          |
+| Auth            | `@nestjs/jwt`, `bcrypt`                                                   |
+| Validasi        | `class-validator`, `class-transformer`                                    |
+| Docs API        | `@nestjs/swagger` (hanya di Gateway)                                      |
+| Test            | Vitest + supertest                                                        |
 
 **Catatan tooling**
+
 - Scaffold: `nest new` dengan package manager Bun dan module system ESM + Vitest.
 - Script dijalankan dengan `bun run <script>`. `bun test` bukan Vitest.
 - Bun tidak menjalankan postinstall dependensi secara default: daftarkan paket native (mis. `bcrypt`, `prisma`) di `trustedDependencies` pada `package.json`.
@@ -40,7 +41,8 @@ on-demand-delivery-tracking/
 │  ├─ events/                # nama event + payload interface
 │  ├─ proto/                 # location.proto
 │  ├─ constants/             # nama queue, token DI, pattern TCP
-│  └─ filters/               # RpcException helper
+│  ├─ filters/               # RpcException helper
+│  └─ utils/                 # fungsi helper (misal: callService)
 ├─ docs/
 ├─ docker-compose.yml
 ├─ .env.example
@@ -51,20 +53,21 @@ Aturan `libs/common`: hanya DTO, enum, konstanta, interface, proto. **Dilarang**
 
 ## 3. Port & Infrastruktur
 
-| Komponen | Port |
-|---|---|
-| Gateway (HTTP+WS) | 3000 |
-| Auth (TCP) | 4001 |
-| Order (TCP) | 4002 |
-| Location (gRPC) | 50051 |
-| PostgreSQL | 5432 (db: `auth_db`, `order_db`, `location_db`) |
-| RabbitMQ | 5672 (UI 15672) |
+| Komponen          | Port                                            |
+| ----------------- | ----------------------------------------------- |
+| Gateway (HTTP+WS) | 3000                                            |
+| Auth (TCP)        | 4001                                            |
+| Order (TCP)       | 4002                                            |
+| Location (gRPC)   | 50051                                           |
+| PostgreSQL        | 5432 (db: `auth_db`, `order_db`, `location_db`) |
+| RabbitMQ          | 5672 (UI 15672)                                 |
 
 `docker-compose.yml`: service `postgres` (image postgis + init script membuat 3 database dan `CREATE EXTENSION postgis` di `order_db` dan `location_db`) dan `rabbitmq`.
 
 ## 4. Skema Database
 
 ### 4.1 auth_db (Prisma)
+
 ```prisma
 enum Role { CUSTOMER DRIVER }
 
@@ -81,6 +84,7 @@ model User {
 ```
 
 ### 4.2 order_db (TypeORM / SQL)
+
 ```sql
 CREATE TYPE order_status AS ENUM
  ('PENDING','DRIVER_ASSIGNED','PICKED_UP','COMPLETED','NO_DRIVER_AVAILABLE');
@@ -100,9 +104,11 @@ CREATE TABLE orders (
 CREATE INDEX ON orders (customer_id);
 CREATE INDEX ON orders (driver_id);
 ```
+
 `gen_random_uuid()` tersedia di PostgreSQL 13+. `distance_m = ST_Distance(pickup, dropoff)` (garis lurus, catat sebagai keterbatasan). `fee` flat dari env `FLAT_FEE`.
 
 ### 4.3 location_db (SQL)
+
 ```sql
 CREATE TABLE driver_locations (
   driver_id    uuid PRIMARY KEY,
@@ -116,6 +122,7 @@ CREATE INDEX driver_locations_order_idx ON driver_locations (current_order_id) W
 ```
 
 Query inti:
+
 ```sql
 -- upsert lokasi
 INSERT INTO driver_locations (driver_id, is_available, location)
@@ -150,34 +157,48 @@ UPDATE driver_locations SET current_order_id = NULL
 WHERE current_order_id = $1::uuid
 RETURNING driver_id;
 ```
+
 Urutan `ST_MakePoint(lng, lat)`. Ping WS **tidak** boleh mengubah `is_available` atau `current_order_id`. Reserve dan release **tidak mengubah** `updated_at`.
 
 ## 5. REST API (Gateway)
 
 Base URL `http://localhost:3000`. Bearer JWT kecuali `/auth/*`.
 
-| Method | Path | Role | Body | Sukses | Error |
-|---|---|---|---|---|---|
-| POST | `/auth/register` | public | `{email,password,name,role}` | 201 `{id,email,name,role}` | 409 email dipakai, 400 |
-| POST | `/auth/login` | public | `{email,password}` | 200 `{accessToken}` | 401 |
-| GET | `/auth/me` | any | – | 200 `{id,email,name,role}` | 401 |
-| POST | `/orders` | CUSTOMER | `{pickup:{lat,lng},dropoff:{lat,lng}}` | 201 Order | 400, 403 |
-| GET | `/orders` | any | – | 200 `Order[]` (milik user) | 401 |
-| GET | `/orders/:id` | any | – | 200 Order | 403, 404 |
-| PATCH | `/orders/:id/status` | DRIVER | `{status}` (`PICKED_UP`/`COMPLETED`) | 200 Order | 403, 404, 409 |
-| POST | `/drivers/online` | DRIVER | `{lat,lng}` | 200 `{ok:true}` | 403 |
-| POST | `/drivers/offline` | DRIVER | – | 200 `{ok:true}` | 403 |
+| Method | Path                 | Role     | Body                                   | Sukses                     | Error                  |
+| ------ | -------------------- | -------- | -------------------------------------- | -------------------------- | ---------------------- |
+| POST   | `/auth/register`     | public   | `{email,password,name,role}`           | 201 `{id,email,name,role}` | 409 email dipakai, 400 |
+| POST   | `/auth/login`        | public   | `{email,password}`                     | 200 `{accessToken}`        | 401                    |
+| GET    | `/auth/me`           | any      | –                                      | 200 `{id,email,name,role}` | 401                    |
+| POST   | `/orders`            | CUSTOMER | `{pickup:{lat,lng},dropoff:{lat,lng}}` | 201 Order                  | 400, 403               |
+| GET    | `/orders`            | any      | –                                      | 200 `Order[]` (milik user) | 401                    |
+| GET    | `/orders/:id`        | any      | –                                      | 200 Order                  | 403, 404               |
+| PATCH  | `/orders/:id/status` | DRIVER   | `{status}` (`PICKED_UP`/`COMPLETED`)   | 200 Order                  | 403, 404, 409          |
+| POST   | `/drivers/online`    | DRIVER   | `{lat,lng}`                            | 200 `{ok:true}`            | 403                    |
+| POST   | `/drivers/offline`   | DRIVER   | –                                      | 200 `{ok:true}`            | 403                    |
 
 **Contoh `POST /orders`**
+
 ```json
-{ "pickup": {"lat": -6.9147, "lng": 107.6098}, "dropoff": {"lat": -6.9034, "lng": 107.6186} }
+{
+  "pickup": { "lat": -6.9147, "lng": 107.6098 },
+  "dropoff": { "lat": -6.9034, "lng": 107.6186 }
+}
 ```
+
 **Contoh respons**
+
 ```json
-{ "id":"…","status":"DRIVER_ASSIGNED","driverId":"…","distanceM":1650,"fee":10000 }
+{
+  "id": "…",
+  "status": "DRIVER_ASSIGNED",
+  "driverId": "…",
+  "distanceM": 1650,
+  "fee": 10000
+}
 ```
 
 ## 6. Swagger
+
 - Setup di `apps/gateway/src/main.ts`: `DocumentBuilder` + `addBearerAuth()`, dokumen di `/docs`.
 - Tiap controller: `@ApiTags`, `@ApiBearerAuth` (kecuali public), tiap endpoint: `@ApiOperation`, `@ApiResponse` (sukses + error utama).
 - DTO request/response di `libs/common/dto` memakai `@ApiProperty({ example })`. Boleh memakai Swagger CLI plugin untuk mengurangi boilerplate.
@@ -185,14 +206,15 @@ Base URL `http://localhost:3000`. Bearer JWT kecuali `/auth/*`.
 - Pembuatan dekorator boleh dibantu AI, tetapi hasilnya harus dicek terhadap tabel §5.
 
 ## 7. WebSocket (Gateway, Socket.IO)
+
 Koneksi: `io("http://localhost:3000", { auth: { token: "<JWT>" } })`. Token diverifikasi saat handshake (TCP `auth.validate_token`); gagal → disconnect.
 
-| Event | Arah | Role | Payload | Catatan |
-|---|---|---|---|---|
-| `driver:location` | client→server | DRIVER | `{lat,lng,orderId?}` | emit RMQ `driver.location_updated`; jika `orderId` → forward ke room |
-| `order:subscribe` | client→server | CUSTOMER | `{orderId}` | cek kepemilikan via `order.get`, lalu join `order:{id}` |
-| `order:location` | server→client | – | `{orderId,lat,lng,ts}` | ke room `order:{id}` |
-| `order:status` | server→client | – | `{orderId,status,driverId?}` | dari event `order.*` |
+| Event             | Arah          | Role     | Payload                      | Catatan                                                              |
+| ----------------- | ------------- | -------- | ---------------------------- | -------------------------------------------------------------------- |
+| `driver:location` | client→server | DRIVER   | `{lat,lng,orderId?}`         | emit RMQ `driver.location_updated`; jika `orderId` → forward ke room |
+| `order:subscribe` | client→server | CUSTOMER | `{orderId}`                  | cek kepemilikan via `order.get`, lalu join `order:{id}`              |
+| `order:location`  | server→client | –        | `{orderId,lat,lng,ts}`       | ke room `order:{id}`                                                 |
+| `order:status`    | server→client | –        | `{orderId,status,driverId?}` | dari event `order.*`                                                 |
 
 ## 8. State Machine Order
 
@@ -206,32 +228,35 @@ stateDiagram-v2
   COMPLETED --> [*]
   NO_DRIVER_AVAILABLE --> [*]
 ```
+
 Transisi lain → `409 INVALID_STATUS_TRANSITION`. Hanya `driver_id` yang tercatat boleh mengubah status.
+**Catatan:** Jika koneksi ke `location-service` gagal/timeout saat _create order_, sistem menyimpan order dengan status `NO_DRIVER_AVAILABLE` (dan memanggil ReleaseDriver sebagai kompensasi jika gagalnya separuh jalan), lalu dikembalikan sukses ke customer (tanpa error 503).
 
 ## 9. TCP Message Patterns
 
-| Service | Pattern | Payload | Respons |
-|---|---|---|---|
-| Auth | `auth.register` | `RegisterDto` | `UserDto` |
-| Auth | `auth.login` | `LoginDto` | `{accessToken}` |
-| Auth | `auth.validate_token` | `{token}` | `{userId,role}` |
-| Auth | `auth.me` | `{userId}` | `UserDto` |
-| Order | `order.create` | `{customerId,pickup,dropoff}` | `OrderDto` |
-| Order | `order.get` | `{orderId,userId,role}` | `OrderDto` |
-| Order | `order.list` | `{userId,role}` | `OrderDto[]` |
-| Order | `order.update_status` | `{orderId,driverId,status}` | `OrderDto` |
+| Service | Pattern               | Payload                       | Respons         |
+| ------- | --------------------- | ----------------------------- | --------------- |
+| Auth    | `auth.register`       | `RegisterDto`                 | `UserDto`       |
+| Auth    | `auth.login`          | `LoginDto`                    | `{accessToken}` |
+| Auth    | `auth.validate_token` | `{token}`                     | `{userId,role}` |
+| Auth    | `auth.me`             | `{userId}`                    | `UserDto`       |
+| Order   | `order.create`        | `{customerId,pickup,dropoff}` | `OrderDto`      |
+| Order   | `order.get`           | `{orderId,userId,role}`       | `OrderDto`      |
+| Order   | `order.list`          | `{userId,role}`               | `OrderDto[]`    |
+| Order   | `order.update_status` | `{orderId,driverId,status}`   | `OrderDto`      |
 
 Error dikirim sebagai `RpcException({ code, message })` (kode di §11).
 
 ## 10. gRPC & Event
 
 ### 10.1 `libs/common/src/proto/location.proto`
+
 ```proto
 syntax = "proto3";
 package location;
 
 service LocationService {
-  rpc FindNearestDrivers (FindNearestDriversRequest) returns (FindNearestDriversResponse);
+  rpc FindNearestDrivers (FindNearestDriversRequest) returns (FindNearestDriversResponse); // Hanya untuk pengujian grpcurl, tidak dipakai OrderService
   rpc SetDriverAvailability (SetDriverAvailabilityRequest) returns (SetDriverAvailabilityResponse);
   rpc ReserveNearestDriver (ReserveNearestDriverRequest) returns (ReserveNearestDriverResponse);
   rpc ReleaseDriver (ReleaseDriverRequest) returns (ReleaseDriverResponse);
@@ -249,32 +274,33 @@ message ReserveNearestDriverResponse { bool found = 1; NearbyDriver driver = 2; 
 message ReleaseDriverRequest { string order_id = 1; }
 message ReleaseDriverResponse { bool released = 1; }
 ```
+
 Radius default pencarian: `SEARCH_RADIUS_M=3000`, `limit=1`.
 Karena ESM, path file proto dirujuk dengan `import.meta.dirname` (atau `fileURLToPath(import.meta.url)`), bukan `__dirname`; pastikan file `.proto` ikut tersalin ke output build (assets di `nest-cli.json`).
 
 ### 10.2 Event RabbitMQ
 
-| Event | Publisher → Queue | Consumer | Payload |
-|---|---|---|---|
-| `driver.location_updated` | Gateway → `location_queue` | Location | `{driverId,lat,lng,ts}` |
-| `order.created` | Order → `notification_queue` | Notification | `{orderId,customerId}` |
-| `order.driver_assigned` | Order → `notification_queue`, `gateway_queue` | Notification, Gateway | `{orderId,customerId,driverId}` |
-| `order.status_changed` | Order → `notification_queue`, `gateway_queue` | Notification, Gateway | `{orderId,customerId,driverId,status}` |
+| Event                     | Publisher → Queue                             | Consumer              | Payload                                |
+| ------------------------- | --------------------------------------------- | --------------------- | -------------------------------------- |
+| `driver.location_updated` | Gateway → `location_queue`                    | Location              | `{driverId,lat,lng,ts}`                |
+| `order.created`           | Order → `notification_queue`                  | Notification          | `{orderId,customerId}`                 |
+| `order.driver_assigned`   | Order → `notification_queue`, `gateway_queue` | Notification, Gateway | `{orderId,customerId,driverId}`        |
+| `order.status_changed`    | Order → `notification_queue`, `gateway_queue` | Notification, Gateway | `{orderId,customerId,driverId,status}` |
 
 Order memakai dua `ClientProxy` RMQ (satu per queue tujuan). Nama queue dan event ada di `libs/common/constants` dan `libs/common/events`.
 
 ## 11. Error Code
 
-| Code | HTTP | Arti |
-|---|---|---|
-| `VALIDATION_ERROR` | 400 | DTO tidak valid |
-| `UNAUTHORIZED` | 401 | token hilang/invalid |
-| `FORBIDDEN` | 403 | role/kepemilikan salah |
-| `NOT_FOUND` | 404 | resource tidak ada |
-| `EMAIL_TAKEN` | 409 | email sudah terdaftar |
-| `INVALID_STATUS_TRANSITION` | 409 | transisi state ilegal |
-| `INTERNAL` | 500 | error lain |
-| `SERVICE_UNAVAILABLE` | 503 | service down/timeout |
+| Code                        | HTTP | Arti                   |
+| --------------------------- | ---- | ---------------------- |
+| `VALIDATION_ERROR`          | 400  | DTO tidak valid        |
+| `UNAUTHORIZED`              | 401  | token hilang/invalid   |
+| `FORBIDDEN`                 | 403  | role/kepemilikan salah |
+| `NOT_FOUND`                 | 404  | resource tidak ada     |
+| `EMAIL_TAKEN`               | 409  | email sudah terdaftar  |
+| `INVALID_STATUS_TRANSITION` | 409  | transisi state ilegal  |
+| `INTERNAL`                  | 500  | error lain             |
+| `SERVICE_UNAVAILABLE`       | 503  | service down/timeout   |
 
 Bentuk respons error: `{ statusCode, code, message }`.
 

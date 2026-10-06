@@ -6,6 +6,9 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { status } from '@grpc/grpc-js';
 import { DataSource } from 'typeorm';
 
+import { CreateDriverLocations1790923737229 } from './migrations/1790923737229-CreateDriverLocations.js';
+import { AddCurrentOrderIdToDriverLocations1791234567000 } from './migrations/1791234567000-AddCurrentOrderIdToDriverLocations.js';
+
 describe('LocationServiceService', () => {
   let service: LocationServiceService;
   let dataSource: DataSource;
@@ -22,7 +25,12 @@ describe('LocationServiceService', () => {
             url:
               config.get('LOCATION_TEST_DATABASE_URL') ||
               'postgresql://postgres:postgres@localhost:5432/location_test_db',
-            synchronize: true, // Use true for e2e tests so tables are created automatically
+            synchronize: false,
+            migrationsRun: true,
+            migrations: [
+              CreateDriverLocations1790923737229,
+              AddCurrentOrderIdToDriverLocations1791234567000,
+            ],
           }),
           inject: [ConfigService],
         }),
@@ -182,6 +190,12 @@ describe('LocationServiceService', () => {
         orderId: '11111111-1111-1111-1111-111111111111',
       });
       expect(releaseRes.released).toBe(true);
+
+      // Release non-existent order
+      const releaseResNonExistent = await service.releaseDriver({
+        orderId: '99999999-9999-9999-9999-999999999999',
+      });
+      expect(releaseResNonExistent.released).toBe(false);
 
       // Now driver 4 should be back
       const driversAfterRelease = await service.findNearest({

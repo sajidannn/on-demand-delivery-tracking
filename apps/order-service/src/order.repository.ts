@@ -32,7 +32,7 @@ export class OrderRepository {
     dropoffLat: number,
     dropoffLng: number,
   ): Promise<OrderRow> {
-    const fee = this.configService.get<number>('FLAT_FEE', 10000);
+    const fee = Number(this.configService.get('FLAT_FEE', 10000));
 
     const result = await this.dataSource.query(
       `WITH inserted AS (

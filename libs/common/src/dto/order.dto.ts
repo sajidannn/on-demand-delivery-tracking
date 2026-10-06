@@ -1,5 +1,16 @@
 import { Type } from 'class-transformer';
-import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, Max, Min, ValidateNested } from 'class-validator';
+import {
+  IsEnum,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Max,
+  Min,
+  ValidateNested,
+  IsIn,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { OrderStatus } from '../enums/order-status.enum.js';
 
@@ -38,8 +49,11 @@ export class CreateOrderPayloadDto extends CreateOrderDto {
 }
 
 export class UpdateOrderStatusDto {
-  @ApiProperty({ enum: OrderStatus, example: OrderStatus.PICKED_UP })
-  @IsEnum(OrderStatus)
+  @ApiProperty({
+    enum: [OrderStatus.PICKED_UP, OrderStatus.COMPLETED],
+    example: OrderStatus.PICKED_UP,
+  })
+  @IsIn([OrderStatus.PICKED_UP, OrderStatus.COMPLETED])
   @IsNotEmpty()
   status: OrderStatus;
 }

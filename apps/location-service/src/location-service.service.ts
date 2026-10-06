@@ -49,7 +49,9 @@ export class LocationServiceService {
     );
   }
 
-  async reserveNearest(req: ReserveNearestDriverRequest): Promise<ReserveNearestDriverResponse> {
+  async reserveNearest(
+    req: ReserveNearestDriverRequest,
+  ): Promise<ReserveNearestDriverResponse> {
     this.assertCoordinate(req.lat, req.lng);
     const row = await this.repo.reserveNearest(
       req.orderId,
@@ -71,7 +73,9 @@ export class LocationServiceService {
     };
   }
 
-  async releaseDriver(req: ReleaseDriverRequest): Promise<ReleaseDriverResponse> {
+  async releaseDriver(
+    req: ReleaseDriverRequest,
+  ): Promise<ReleaseDriverResponse> {
     const released = await this.repo.releaseByOrder(req.orderId);
     if (released) {
       this.logger.log(`Driver released for order ${req.orderId}`);

@@ -126,9 +126,15 @@ describe('AuthServiceController', () => {
       });
       jwtMock.signAsync.mockResolvedValue('fake_token_123');
 
-      const result = await service.login({ email: 'a@b.com', password: 'pass123' });
+      const result = await service.login({
+        email: 'a@b.com',
+        password: 'pass123',
+      });
       expect(result).toEqual({ accessToken: 'fake_token_123' });
-      expect(jwtMock.signAsync).toHaveBeenCalledWith({ sub: 'uuid-1', role: Role.CUSTOMER });
+      expect(jwtMock.signAsync).toHaveBeenCalledWith({
+        sub: 'uuid-1',
+        role: Role.CUSTOMER,
+      });
     });
   });
 
@@ -160,9 +166,9 @@ describe('AuthServiceController', () => {
     it('should throw NOT_FOUND when user does not exist', async () => {
       prismaMock.user.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.getMe('non-existent-id'),
-      ).rejects.toMatchObject({ error: { code: 'NOT_FOUND' } });
+      await expect(service.getMe('non-existent-id')).rejects.toMatchObject({
+        error: { code: 'NOT_FOUND' },
+      });
     });
 
     it('should return user data when user exists', async () => {
@@ -171,7 +177,7 @@ describe('AuthServiceController', () => {
         email: 'test@b.com',
         name: 'Test',
         role: Role.CUSTOMER,
-        passwordHash: 'abc'
+        passwordHash: 'abc',
       });
 
       const result = await service.getMe('uuid-2');

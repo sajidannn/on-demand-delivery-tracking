@@ -6,7 +6,10 @@
   "private": true,
   "license": "UNLICENSED",
   "type": "module",
-  "trustedDependencies": ["bcrypt", "prisma"],
+  "trustedDependencies": [
+    "bcrypt",
+    "prisma"
+  ],
   "scripts": {
     "build": "nest build",
     "deploy": "nest deploy",

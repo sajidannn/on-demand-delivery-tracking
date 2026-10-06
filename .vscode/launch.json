@@ -214,7 +214,12 @@
       "autoAttachChildProcesses": true,
       "skipFiles": ["<node_internals>/**", "**/node_modules/**"],
       "program": "${workspaceFolder}/node_modules/vitest/vitest.mjs",
-      "args": ["run", "--config", "./vitest.config.e2e.ts", "--passWithNoTests"],
+      "args": [
+        "run",
+        "--config",
+        "./vitest.config.e2e.ts",
+        "--passWithNoTests"
+      ],
       "smartStep": true,
       "env": {
         "PATH": "${env:HOME}/.local/share/mise/shims:${env:PATH}"

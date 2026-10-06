@@ -30,10 +30,7 @@ import {
 import { Roles } from './decorators/roles.decorator.js';
 import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
 import { RolesGuard } from './guards/roles.guard.js';
-
-interface AuthenticatedRequest {
-  user: { userId: string; role: Role };
-}
+import type { AuthenticatedRequest } from './interfaces/authenticated-request.interface.js';
 
 @ApiTags('Drivers')
 @ApiBearerAuth()
@@ -66,8 +63,16 @@ export class DriverController implements OnModuleInit {
     description: 'Validasi gagal (VALIDATION_ERROR)',
     type: ErrorResponseDto,
   })
-  @ApiResponse({ status: 401, description: 'Token tidak valid (UNAUTHORIZED)', type: ErrorResponseDto })
-  @ApiResponse({ status: 403, description: 'Bukan role DRIVER (FORBIDDEN)', type: ErrorResponseDto })
+  @ApiResponse({
+    status: 401,
+    description: 'Token tidak valid (UNAUTHORIZED)',
+    type: ErrorResponseDto,
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Bukan role DRIVER (FORBIDDEN)',
+    type: ErrorResponseDto,
+  })
   async setOnline(
     @Req() req: AuthenticatedRequest,
     @Body() body: DriverLocationDto,
@@ -93,8 +98,16 @@ export class DriverController implements OnModuleInit {
     description: 'Driver berhasil offline',
     type: SuccessResponseDto,
   })
-  @ApiResponse({ status: 401, description: 'Token tidak valid (UNAUTHORIZED)', type: ErrorResponseDto })
-  @ApiResponse({ status: 403, description: 'Bukan role DRIVER (FORBIDDEN)', type: ErrorResponseDto })
+  @ApiResponse({
+    status: 401,
+    description: 'Token tidak valid (UNAUTHORIZED)',
+    type: ErrorResponseDto,
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Bukan role DRIVER (FORBIDDEN)',
+    type: ErrorResponseDto,
+  })
   async setOffline(@Req() req: AuthenticatedRequest) {
     const { userId: driverId } = req.user;
     return firstValueFrom(

@@ -33,10 +33,7 @@ import {
 import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
 import { RolesGuard } from './guards/roles.guard.js';
 import { Roles } from './decorators/roles.decorator.js';
-
-interface AuthenticatedRequest {
-  user: { userId: string; role: Role };
-}
+import type { AuthenticatedRequest } from './interfaces/authenticated-request.interface.js';
 
 @ApiTags('Orders')
 @ApiBearerAuth()
@@ -50,10 +47,31 @@ export class OrderController {
   @Post()
   @Roles(Role.CUSTOMER)
   @ApiOperation({ summary: 'Membuat pesanan baru (Hanya Customer)' })
-  @ApiResponse({ status: 201, description: 'Pesanan berhasil dibuat', type: OrderDto })
-  @ApiResponse({ status: 400, description: 'Payload tidak valid', type: ErrorResponseDto })
-  @ApiResponse({ status: 401, description: 'Token tidak valid (UNAUTHORIZED)', type: ErrorResponseDto })
-  @ApiResponse({ status: 403, description: 'Hanya customer yang bisa pesan', type: ErrorResponseDto })
+  @ApiResponse({
+    status: 201,
+    description: 'Pesanan berhasil dibuat',
+    type: OrderDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Payload tidak valid',
+    type: ErrorResponseDto,
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Token tidak valid (UNAUTHORIZED)',
+    type: ErrorResponseDto,
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Hanya customer yang bisa pesan',
+    type: ErrorResponseDto,
+  })
+  @ApiResponse({
+    status: 503,
+    description: 'Layanan order tidak tersedia (SERVICE_UNAVAILABLE)',
+    type: ErrorResponseDto,
+  })
   async createOrder(
     @Req() req: AuthenticatedRequest,
     @Body() body: CreateOrderDto,
@@ -63,46 +81,120 @@ export class OrderController {
       customerId: req.user.userId,
     };
     return firstValueFrom(
-      callService(this.orderClient.send<OrderDto>(PATTERNS.ORDER.CREATE, payload), 'order-service', 5000),
+      callService(
+        this.orderClient.send<OrderDto>(PATTERNS.ORDER.CREATE, payload),
+        'order-service',
+        5000,
+      ),
     );
   }
 
   @Get()
   @ApiOperation({ summary: 'Mendapatkan daftar pesanan milik user saat ini' })
   @ApiResponse({ status: 200, description: 'Daftar pesanan', type: [OrderDto] })
-  @ApiResponse({ status: 401, description: 'Token tidak valid (UNAUTHORIZED)', type: ErrorResponseDto })
-  async getOrders(
-    @Req() req: AuthenticatedRequest,
-  ): Promise<OrderDto[]> {
+  @ApiResponse({
+    status: 401,
+    description: 'Token tidak valid (UNAUTHORIZED)',
+    type: ErrorResponseDto,
+  })
+  @ApiResponse({
+    status: 503,
+    description: 'Layanan order tidak tersedia (SERVICE_UNAVAILABLE)',
+    type: ErrorResponseDto,
+  })
+  async getOrders(@Req() req: AuthenticatedRequest): Promise<OrderDto[]> {
     return firstValueFrom(
-      callService(this.orderClient.send<OrderDto[]>(PATTERNS.ORDER.LIST, { userId: req.user.userId, role: req.user.role }), 'order-service', 5000),
+      callService(
+        this.orderClient.send<OrderDto[]>(PATTERNS.ORDER.LIST, {
+          userId: req.user.userId,
+          role: req.user.role,
+        }),
+        'order-service',
+        5000,
+      ),
     );
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Mendapatkan detail pesanan' })
   @ApiResponse({ status: 200, description: 'Detail pesanan', type: OrderDto })
-  @ApiResponse({ status: 401, description: 'Token tidak valid (UNAUTHORIZED)', type: ErrorResponseDto })
-  @ApiResponse({ status: 403, description: 'Akses ditolak', type: ErrorResponseDto })
-  @ApiResponse({ status: 404, description: 'Pesanan tidak ditemukan', type: ErrorResponseDto })
+  @ApiResponse({
+    status: 401,
+    description: 'Token tidak valid (UNAUTHORIZED)',
+    type: ErrorResponseDto,
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Akses ditolak',
+    type: ErrorResponseDto,
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Pesanan tidak ditemukan',
+    type: ErrorResponseDto,
+  })
+  @ApiResponse({
+    status: 503,
+    description: 'Layanan order tidak tersedia (SERVICE_UNAVAILABLE)',
+    type: ErrorResponseDto,
+  })
   async getOrder(
     @Param('id', ParseUUIDPipe) orderId: string,
     @Req() req: AuthenticatedRequest,
   ): Promise<OrderDto> {
     return firstValueFrom(
-      callService(this.orderClient.send<OrderDto>(PATTERNS.ORDER.GET, { orderId, userId: req.user.userId, role: req.user.role }), 'order-service', 5000),
+      callService(
+        this.orderClient.send<OrderDto>(PATTERNS.ORDER.GET, {
+          orderId,
+          userId: req.user.userId,
+          role: req.user.role,
+        }),
+        'order-service',
+        5000,
+      ),
     );
   }
 
   @Patch(':id/status')
   @Roles(Role.DRIVER)
-  @ApiOperation({ summary: 'Mengubah status pesanan (Hanya Driver yang di-assign)' })
-  @ApiResponse({ status: 200, description: 'Status berhasil diubah', type: OrderDto })
-  @ApiResponse({ status: 400, description: 'Payload tidak valid', type: ErrorResponseDto })
-  @ApiResponse({ status: 401, description: 'Token tidak valid (UNAUTHORIZED)', type: ErrorResponseDto })
-  @ApiResponse({ status: 403, description: 'Hanya driver yang di-assign', type: ErrorResponseDto })
-  @ApiResponse({ status: 404, description: 'Pesanan tidak ditemukan', type: ErrorResponseDto })
-  @ApiResponse({ status: 409, description: 'Transisi status ilegal', type: ErrorResponseDto })
+  @ApiOperation({
+    summary: 'Mengubah status pesanan (Hanya Driver yang di-assign)',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Status berhasil diubah',
+    type: OrderDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Payload tidak valid',
+    type: ErrorResponseDto,
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Token tidak valid (UNAUTHORIZED)',
+    type: ErrorResponseDto,
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Hanya driver yang di-assign',
+    type: ErrorResponseDto,
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Pesanan tidak ditemukan',
+    type: ErrorResponseDto,
+  })
+  @ApiResponse({
+    status: 409,
+    description: 'Transisi status ilegal',
+    type: ErrorResponseDto,
+  })
+  @ApiResponse({
+    status: 503,
+    description: 'Layanan order tidak tersedia (SERVICE_UNAVAILABLE)',
+    type: ErrorResponseDto,
+  })
   async updateStatus(
     @Param('id', ParseUUIDPipe) orderId: string,
     @Req() req: AuthenticatedRequest,
@@ -114,7 +206,11 @@ export class OrderController {
       status: body.status,
     };
     return firstValueFrom(
-      callService(this.orderClient.send<OrderDto>(PATTERNS.ORDER.UPDATE_STATUS, payload), 'order-service', 5000),
+      callService(
+        this.orderClient.send<OrderDto>(PATTERNS.ORDER.UPDATE_STATUS, payload),
+        'order-service',
+        5000,
+      ),
     );
   }
 }

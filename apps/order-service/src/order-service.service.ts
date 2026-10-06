@@ -9,11 +9,12 @@ import {
   OrderStatus,
   Role,
   UpdateOrderStatusPayloadDto,
+  callService,
 } from '@app/common';
 import { OrderRepository, OrderRow } from './order.repository.js';
 import { OrderStateMachine } from './order-state-machine.service.js';
 import { ConfigService } from '@nestjs/config';
-import { firstValueFrom, timeout } from 'rxjs';
+import { firstValueFrom } from 'rxjs';
 import { Metadata } from '@grpc/grpc-js';
 
 @Injectable()
@@ -62,15 +63,19 @@ export class OrderServiceService implements OnModuleInit {
     
     try {
       const response = await firstValueFrom(
-        this.locationService.reserveNearestDriver(
-          {
-            orderId: orderRow.id,
-            lat: payload.pickup.lat,
-            lng: payload.pickup.lng,
-            radiusM,
-          },
-          new Metadata(),
-        ).pipe(timeout(5000)),
+        callService(
+          this.locationService.reserveNearestDriver(
+            {
+              orderId: orderRow.id,
+              lat: payload.pickup.lat,
+              lng: payload.pickup.lng,
+              radiusM,
+            },
+            new Metadata(),
+          ),
+          'location-service',
+          5000,
+        ),
       );
 
       if (response.found && response.driver) {
@@ -105,6 +110,15 @@ export class OrderServiceService implements OnModuleInit {
         orderRow.id,
         OrderStatus.NO_DRIVER_AVAILABLE,
       );
+
+      const err = error as any;
+      if (
+        err.code === 'SERVICE_UNAVAILABLE' ||
+        (err instanceof RpcException && (err.getError() as any)?.code === 'SERVICE_UNAVAILABLE')
+      ) {
+        throw error;
+      }
+
       return this.toOrderDto(updatedRow!);
     }
   }
@@ -159,10 +173,14 @@ export class OrderServiceService implements OnModuleInit {
     if (payload.status === OrderStatus.COMPLETED) {
       try {
         await firstValueFrom(
-          this.locationService.releaseDriver(
-            { orderId: payload.orderId },
-            new Metadata(),
-          ).pipe(timeout(5000)),
+          callService(
+            this.locationService.releaseDriver(
+              { orderId: payload.orderId },
+              new Metadata(),
+            ),
+            'location-service',
+            5000,
+          ),
         );
         this.logger.log(`Released driver for order ${payload.orderId}`);
       } catch (error) {

@@ -9,3 +9,4 @@ export * from './dto/response.dto.js';
 export * from './filters/rpc-exception.filter.js';
 export * from './proto/location.pb.js';
 export * from './dto/order.dto.js';
+export * from './utils/call-service.util.js';

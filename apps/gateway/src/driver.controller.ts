@@ -17,7 +17,7 @@ import {
 } from '@nestjs/swagger';
 import type { ClientGrpc } from '@nestjs/microservices';
 import { Metadata } from '@grpc/grpc-js';
-import { firstValueFrom, timeout } from 'rxjs';
+import { firstValueFrom } from 'rxjs';
 import {
   Role,
   DriverLocationDto,
@@ -25,6 +25,7 @@ import {
   LocationServiceClient,
   SuccessResponseDto,
   ErrorResponseDto,
+  callService,
 } from '@app/common';
 import { Roles } from './decorators/roles.decorator.js';
 import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
@@ -73,12 +74,14 @@ export class DriverController implements OnModuleInit {
   ) {
     const { userId: driverId } = req.user;
     return firstValueFrom(
-      this.locationService
-        .setDriverAvailability(
+      callService(
+        this.locationService.setDriverAvailability(
           { driverId, isAvailable: true, lat: body.lat, lng: body.lng },
           new Metadata(),
-        )
-        .pipe(timeout(3000)),
+        ),
+        'location-service',
+        3000,
+      ),
     );
   }
 
@@ -95,12 +98,14 @@ export class DriverController implements OnModuleInit {
   async setOffline(@Req() req: AuthenticatedRequest) {
     const { userId: driverId } = req.user;
     return firstValueFrom(
-      this.locationService
-        .setDriverAvailability(
+      callService(
+        this.locationService.setDriverAvailability(
           { driverId, isAvailable: false, lat: 0, lng: 0 },
           new Metadata(),
-        )
-        .pipe(timeout(3000)),
+        ),
+        'location-service',
+        3000,
+      ),
     );
   }
 }

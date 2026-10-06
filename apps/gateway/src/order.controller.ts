@@ -8,6 +8,7 @@ import {
   UseGuards,
   Inject,
   Req,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -16,7 +17,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { ClientProxy } from '@nestjs/microservices';
-import { firstValueFrom, timeout } from 'rxjs';
+import { firstValueFrom } from 'rxjs';
 import {
   CreateOrderDto,
   CreateOrderPayloadDto,
@@ -27,6 +28,7 @@ import {
   UpdateOrderStatusPayloadDto,
   ErrorResponseDto,
   PATTERNS,
+  callService,
 } from '@app/common';
 import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
 import { RolesGuard } from './guards/roles.guard.js';
@@ -61,7 +63,7 @@ export class OrderController {
       customerId: req.user.userId,
     };
     return firstValueFrom(
-      this.orderClient.send<OrderDto>(PATTERNS.ORDER.CREATE, payload).pipe(timeout(5000)),
+      callService(this.orderClient.send<OrderDto>(PATTERNS.ORDER.CREATE, payload), 'order-service', 5000),
     );
   }
 
@@ -73,7 +75,7 @@ export class OrderController {
     @Req() req: AuthenticatedRequest,
   ): Promise<OrderDto[]> {
     return firstValueFrom(
-      this.orderClient.send<OrderDto[]>(PATTERNS.ORDER.LIST, { userId: req.user.userId, role: req.user.role }).pipe(timeout(5000)),
+      callService(this.orderClient.send<OrderDto[]>(PATTERNS.ORDER.LIST, { userId: req.user.userId, role: req.user.role }), 'order-service', 5000),
     );
   }
 
@@ -84,11 +86,11 @@ export class OrderController {
   @ApiResponse({ status: 403, description: 'Akses ditolak', type: ErrorResponseDto })
   @ApiResponse({ status: 404, description: 'Pesanan tidak ditemukan', type: ErrorResponseDto })
   async getOrder(
-    @Param('id') orderId: string,
+    @Param('id', ParseUUIDPipe) orderId: string,
     @Req() req: AuthenticatedRequest,
   ): Promise<OrderDto> {
     return firstValueFrom(
-      this.orderClient.send<OrderDto>(PATTERNS.ORDER.GET, { orderId, userId: req.user.userId, role: req.user.role }).pipe(timeout(5000)),
+      callService(this.orderClient.send<OrderDto>(PATTERNS.ORDER.GET, { orderId, userId: req.user.userId, role: req.user.role }), 'order-service', 5000),
     );
   }
 
@@ -102,7 +104,7 @@ export class OrderController {
   @ApiResponse({ status: 404, description: 'Pesanan tidak ditemukan', type: ErrorResponseDto })
   @ApiResponse({ status: 409, description: 'Transisi status ilegal', type: ErrorResponseDto })
   async updateStatus(
-    @Param('id') orderId: string,
+    @Param('id', ParseUUIDPipe) orderId: string,
     @Req() req: AuthenticatedRequest,
     @Body() body: UpdateOrderStatusDto,
   ): Promise<OrderDto> {
@@ -112,7 +114,7 @@ export class OrderController {
       status: body.status,
     };
     return firstValueFrom(
-      this.orderClient.send<OrderDto>(PATTERNS.ORDER.UPDATE_STATUS, payload).pipe(timeout(5000)),
+      callService(this.orderClient.send<OrderDto>(PATTERNS.ORDER.UPDATE_STATUS, payload), 'order-service', 5000),
     );
   }
 }

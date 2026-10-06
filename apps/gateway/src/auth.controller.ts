@@ -17,7 +17,7 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { ClientProxy } from '@nestjs/microservices';
-import { firstValueFrom, timeout } from 'rxjs';
+import { firstValueFrom } from 'rxjs';
 import {
   AUTH_SERVICE_TOKEN,
   PATTERNS,
@@ -27,6 +27,7 @@ import {
   UserResponseDto,
   TokenResponseDto,
   ErrorResponseDto,
+  callService,
 } from '@app/common';
 
 /** Shape user yang disimpan di request setelah JwtAuthGuard */
@@ -59,7 +60,7 @@ export class AuthController {
   })
   async register(@Body() data: RegisterDto): Promise<UserResponseDto> {
     return firstValueFrom(
-      this.authClient.send<UserResponseDto>(PATTERNS.AUTH.REGISTER, data).pipe(timeout(5000)),
+      callService(this.authClient.send<UserResponseDto>(PATTERNS.AUTH.REGISTER, data), 'auth-service', 5000),
     );
   }
 
@@ -83,7 +84,7 @@ export class AuthController {
   })
   async login(@Body() data: LoginDto): Promise<TokenResponseDto> {
     return firstValueFrom(
-      this.authClient.send<TokenResponseDto>(PATTERNS.AUTH.LOGIN, data).pipe(timeout(5000)),
+      callService(this.authClient.send<TokenResponseDto>(PATTERNS.AUTH.LOGIN, data), 'auth-service', 5000),
     );
   }
 
@@ -111,7 +112,7 @@ export class AuthController {
   async getMe(@Req() req: AuthenticatedRequest): Promise<UserResponseDto> {
     const { userId } = req.user;
     return firstValueFrom(
-      this.authClient.send<UserResponseDto>(PATTERNS.AUTH.ME, { userId }).pipe(timeout(5000)),
+      callService(this.authClient.send<UserResponseDto>(PATTERNS.AUTH.ME, { userId }), 'auth-service', 5000),
     );
   }
 }

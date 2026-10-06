@@ -7,8 +7,8 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
-import { firstValueFrom, timeout } from 'rxjs';
-import { AUTH_SERVICE_TOKEN, PATTERNS } from '@app/common';
+import { firstValueFrom } from 'rxjs';
+import { AUTH_SERVICE_TOKEN, PATTERNS, callService } from '@app/common';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
@@ -30,18 +30,23 @@ export class JwtAuthGuard implements CanActivate {
 
     try {
       request.user = await firstValueFrom(
-        this.authClient
-          .send(PATTERNS.AUTH.VALIDATE_TOKEN, { token })
-          .pipe(timeout(3000)),
+        callService(
+          this.authClient.send(PATTERNS.AUTH.VALIDATE_TOKEN, { token }),
+          'auth-service',
+          3000,
+        ),
       );
       return true;
     } catch (error) {
       // Bedakan: token invalid vs auth-service tidak tersedia / down
-      const err = error as { code?: string; name?: string };
+      const err = error as { code?: string; name?: string; message?: string };
       if (err.code === 'UNAUTHORIZED') {
         throw new UnauthorizedException('Token tidak valid atau kadaluarsa');
       }
-      throw new ServiceUnavailableException('Auth service tidak tersedia');
+      if (err.code === 'SERVICE_UNAVAILABLE' && err.message) {
+        throw new ServiceUnavailableException(err.message);
+      }
+      throw new ServiceUnavailableException('Layanan auth-service sedang down');
     }
   }
 }

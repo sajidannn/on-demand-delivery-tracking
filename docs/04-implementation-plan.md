@@ -70,12 +70,12 @@ Tiap task selesai bila memenuhi _Definition of Done_ di `AGENTS.md`.
 
 ## Hari 6 — WebSocket Tracking
 
-- [ ] [W] `@WebSocketGateway`, auth handshake JWT
-- [ ] [W] `driver:location` → emit RMQ + forward ke room bila `orderId`
-- [ ] [W] `order:subscribe` (cek kepemilikan) → join room
-- [ ] [W] Handler event `gateway_queue` mendorong `order:status` ke room/driver
-- [ ] [N] Script simulator driver (Node) mengirim GPS bergerak
-- [ ] [N] Script client customer untuk melihat `order:location`
+- [x] [W] `@WebSocketGateway`, auth handshake JWT
+- [x] [W] `driver:location` → emit RMQ + forward ke room bila `orderId`
+- [x] [W] `order:subscribe` (cek kepemilikan) → join room
+- [x] [W] Handler event `gateway_queue` mendorong `order:status` ke room/driver
+- [x] [N] Script simulator driver (Node) mengirim GPS bergerak
+- [x] [N] Script client customer untuk melihat `order:location`
 
 **Selesai bila:** simulator berjalan dan customer menerima `order:location` real-time.
 

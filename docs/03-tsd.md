@@ -212,9 +212,9 @@ Koneksi: `io("http://localhost:3000", { auth: { token: "<JWT>" } })`. Token dive
 | Event             | Arah          | Role     | Payload                      | Catatan                                                              |
 | ----------------- | ------------- | -------- | ---------------------------- | -------------------------------------------------------------------- |
 | `driver:location` | client→server | DRIVER   | `{lat,lng,orderId?}`         | emit RMQ `driver.location_updated`; jika `orderId` → forward ke room |
-| `order:subscribe` | client→server | CUSTOMER | `{orderId}`                  | cek kepemilikan via `order.get`, lalu join `order:{id}`              |
+| `order:subscribe` | client→server | CUSTOMER | `{orderId}`                  | cek kepemilikan via `order.get`, lalu join `order:{id}`. Ack: `{ ok, status, driverId? }` |
 | `order:location`  | server→client | –        | `{orderId,lat,lng,ts}`       | ke room `order:{id}`                                                 |
-| `order:status`    | server→client | –        | `{orderId,status,driverId?}` | dari event `order.*`                                                 |
+| `order:status`    | server→client | –        | `{orderId,status,driverId?}` | diteruskan ke `order:{id}`, `user:{customerId}`, `user:{driverId}`   |
 
 ## 8. State Machine Order
 

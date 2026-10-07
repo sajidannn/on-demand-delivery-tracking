@@ -24,3 +24,16 @@ export interface OrderStatusChangedEvent {
   driverId?: string;
   status: OrderStatus;
 }
+
+export interface OrderLocationPayload {
+  orderId: string;
+  lat: number;
+  lng: number;
+  ts: number;
+}
+
+export interface OrderStatusPayload {
+  orderId: string;
+  status: OrderStatus;
+  driverId?: string;
+}

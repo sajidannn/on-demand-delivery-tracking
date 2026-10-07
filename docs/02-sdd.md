@@ -73,8 +73,9 @@ Bila status berubah ke `COMPLETED`, panggil gRPC `ReleaseDriver` ke Location (be
 
 1. Driver kirim WS `driver:location {lat,lng,orderId?}`.
 2. Gateway emit `driver.location_updated` ke `location_queue` (Location upsert).
-3. Jika `orderId` ada → Gateway langsung emit `order:location` ke room `order:{orderId}`.
-4. Customer WS `order:subscribe {orderId}` → Gateway cek kepemilikan (TCP `order.get`) → join room.
+3. Jika `orderId` ada → Gateway memverifikasi akses (TCP `order.get`). Hasil sukses dicatat di memori lokal (*cache positif*). Jika lolos, Gateway langsung emit `order:location` ke room `order:{orderId}`.
+4. Customer WS `order:subscribe {orderId}` → Gateway memverifikasi kepemilikan (TCP `order.get`) → join room `order:{orderId}`.
+5. Notifikasi `order:status` disiarkan ke room `order:{orderId}`, `user:{customerId}`, dan `user:{driverId}` agar kedua pihak mendapat info instan.
 
 ## 5. Catatan Desain Penting
 

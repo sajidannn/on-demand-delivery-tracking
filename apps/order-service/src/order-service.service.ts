@@ -162,7 +162,7 @@ export class OrderServiceService implements OnModuleInit {
         error,
       );
 
-      await this.releaseQuietly(orderRow.id);
+      void this.releaseQuietly(orderRow.id);
 
       const updatedRow = await this.orderRepository.updateStatus(
         orderRow.id,
@@ -241,7 +241,7 @@ export class OrderServiceService implements OnModuleInit {
     }
 
     if (payload.status === OrderStatus.COMPLETED) {
-      this.releaseQuietly(payload.orderId); // fire and forget
+      void this.releaseQuietly(payload.orderId); // fire and forget
     }
 
     this.publisher.statusChanged({

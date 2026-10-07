@@ -8,12 +8,16 @@ import {
   AUTH_SERVICE_TOKEN,
   LOCATION_SERVICE_NAME,
   ORDER_SERVICE_TOKEN,
+  LOCATION_CLIENT_TOKEN,
+  LOCATION_QUEUE,
+  getRmqOptions,
 } from '@app/common';
 import { fileURLToPath } from 'url';
 import { join, dirname } from 'path';
 import { existsSync } from 'fs';
 import { DriverController } from './driver.controller.js';
 import { OrderController } from './order.controller.js';
+import { TrackingGateway } from './tracking.gateway.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // Cari proto di dist/ dulu (setelah build), fallback ke source saat dev
@@ -64,6 +68,15 @@ const locationProtoPath = existsSync(distProtoPath)
           },
         }),
       },
+      {
+        name: LOCATION_CLIENT_TOKEN,
+        inject: [ConfigService],
+        useFactory: (config: ConfigService) =>
+          getRmqOptions(
+            config.get('RABBITMQ_URL', 'amqp://guest:guest@localhost:5672'),
+            LOCATION_QUEUE,
+          ),
+      },
     ]),
   ],
   controllers: [
@@ -72,6 +85,6 @@ const locationProtoPath = existsSync(distProtoPath)
     DriverController,
     OrderController,
   ],
-  providers: [GatewayService],
+  providers: [GatewayService, TrackingGateway],
 })
 export class GatewayModule {}

@@ -1,4 +1,4 @@
-import { Controller } from '@nestjs/common';
+import { Controller, Logger } from '@nestjs/common';
 import {
   LocationServiceController as ILocationServiceController,
   LocationServiceControllerMethods,
@@ -19,6 +19,8 @@ import { LocationServiceService } from './location-service.service.js';
 @Controller()
 @LocationServiceControllerMethods() // Decorator ini dari ts-proto
 export class LocationServiceController implements ILocationServiceController {
+  private readonly logger = new Logger(LocationServiceController.name);
+
   constructor(private readonly service: LocationServiceService) {}
 
   async findNearestDrivers(
@@ -52,12 +54,8 @@ export class LocationServiceController implements ILocationServiceController {
     try {
       await this.service.updateLocation(data.driverId, data.lat, data.lng);
     } catch (error) {
-      if (error instanceof RpcException) {
-        const err = (error as RpcException).getError() as any;
-        console.warn(`[LocationController] Ignored invalid location ping from ${data.driverId}: ${err.message || err}`);
-      } else {
-        console.error(`[LocationController] Error updating location via ping:`, error);
-      }
+      const detail = error instanceof RpcException ? JSON.stringify(error.getError()) : String(error);
+      this.logger.warn(`Ping diabaikan untuk driver ${data.driverId}: ${detail}`);
     }
   }
 }

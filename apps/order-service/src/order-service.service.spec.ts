@@ -10,10 +10,10 @@ import { of, throwError } from 'rxjs';
 
 describe('OrderServiceService', () => {
   let service: OrderServiceService;
-  let repo: any;
-  let stateMachine: any;
-  let locationServiceMock: any;
-  let publisherMock: any;
+  let repo: Record<string, ReturnType<typeof vi.fn>>;
+  let stateMachine: Record<string, ReturnType<typeof vi.fn>>;
+  let locationServiceMock: Record<string, ReturnType<typeof vi.fn>>;
+  let publisherMock: Record<string, ReturnType<typeof vi.fn>>;
 
   beforeEach(async () => {
     repo = {
@@ -35,9 +35,9 @@ describe('OrderServiceService', () => {
     };
 
     publisherMock = {
-      created: vi.fn(),
-      driverAssigned: vi.fn(),
-      statusChanged: vi.fn(),
+      created: vi.fn().mockResolvedValue(undefined),
+      driverAssigned: vi.fn().mockResolvedValue(undefined),
+      statusChanged: vi.fn().mockResolvedValue(undefined),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -92,6 +92,7 @@ describe('OrderServiceService', () => {
         'order-1',
         'driver-1',
         OrderStatus.DRIVER_ASSIGNED,
+        OrderStatus.PENDING,
       );
       expect(publisherMock.created).toHaveBeenCalledWith({ orderId: 'order-1', customerId: 'cust-1' });
       expect(publisherMock.driverAssigned).toHaveBeenCalledWith({ orderId: 'order-1', customerId: 'cust-1', driverId: 'driver-1' });
@@ -121,6 +122,7 @@ describe('OrderServiceService', () => {
       expect(repo.updateStatus).toHaveBeenCalledWith(
         'order-1',
         OrderStatus.NO_DRIVER_AVAILABLE,
+        OrderStatus.PENDING,
       );
       expect(publisherMock.created).toHaveBeenCalledWith({ orderId: 'order-1', customerId: 'cust-1' });
       expect(publisherMock.statusChanged).toHaveBeenCalledWith({ orderId: 'order-1', customerId: 'cust-1', status: OrderStatus.NO_DRIVER_AVAILABLE });

@@ -34,3 +34,15 @@ export const EVENTS = {
     STATUS_CHANGED: 'order.status_changed',
   },
 };
+
+export const WS_EVENTS = {
+  DRIVER_LOCATION: 'driver:location', // client → server
+  ORDER_SUBSCRIBE: 'order:subscribe', // client → server
+  ORDER_LOCATION: 'order:location', // server → client
+  ORDER_STATUS: 'order:status', // server → client
+} as const;
+
+export const orderRoom = (orderId: string) => `order:${orderId}`;
+export const userRoom = (userId: string) => `user:${userId}`;
+
+export const LOCATION_CLIENT_TOKEN = 'LOCATION_CLIENT';

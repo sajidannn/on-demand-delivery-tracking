@@ -11,3 +11,5 @@ export * from './proto/location.pb.js';
 export * from './dto/order.dto.js';
 export * from './utils/call-service.util.js';
 export * from './utils/rmq.util.js';
+export * from './dto/driver-location-ws.dto.js';
+export * from './dto/order-subscribe.dto.js';

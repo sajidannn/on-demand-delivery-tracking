@@ -6,8 +6,8 @@ import { delay } from 'rxjs/operators';
 
 describe('OrderEventsPublisher', () => {
   let publisher: OrderEventsPublisher;
-  let notifClient: any;
-  let gatewayClient: any;
+  let notifClient: Record<string, ReturnType<typeof vi.fn>>;
+  let gatewayClient: Record<string, ReturnType<typeof vi.fn>>;
 
   beforeEach(async () => {
     notifClient = {

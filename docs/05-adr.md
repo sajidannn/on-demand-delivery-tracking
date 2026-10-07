@@ -89,3 +89,13 @@ Format: Konteks → Keputusan → Konsekuensi. Status semua: **Accepted**. Janga
 **Konteks:** Saat Customer membuat Order baru (`POST /orders`), Order Service mencari driver secara synchronous ke Location Service via gRPC. Pemanggilan ini dapat gagal (timeout, service down). Awalnya direncanakan mengembalikan error 503 (Order tetap PENDING).
 **Keputusan:** Jika pencarian driver gagal atau timeout, Order Service tetap menyimpan order tersebut ke database dengan status `NO_DRIVER_AVAILABLE` (sebagai status akhir) dan mengembalikan respons HTTP 201 sukses.
 **Konsekuensi:** Customer tidak kehilangan niat transaksinya walau sistem backend sibuk/bermasalah. Respons cepat, namun state order langsung tertutup tanpa driver. Pada catch-block, rilis asinkron (`ReleaseDriver`) tetap dipanggil secara best-effort sebagai kompensasi bila gRPC macet di tengah jalan. Error yang dilempar harus ditangani hati-hati agar tidak memunculkan TypeError jika data row kosong.
+
+## ADR-015 — Room Socket.IO dan Validasi Kepemilikan (Caching)
+
+**Konteks:** Menangani komunikasi dua arah WebSocket secara aman, efisien, tanpa spam database untuk setiap pancaran titik lokasi driver.
+**Keputusan:** 
+1. Klien dimasukkan ke *room* unik per pengguna (`user:userId`) saat login, dan *room* per pesanan (`order:orderId`) ketika berlangganan (subscribe). 
+2. Memori lokal gateway (`client.data.activeOrders`) dipakai untuk mencatat hak akses (*cache*) driver terhadap pesanannya agar tidak terus menembak query TCP ke *Order Service*. Cache ini HANYA menyimpan hasil positif (berhasil di-assign), agar jika pengecekan awal gagal, sistem dapat mengecek ulang di ping berikutnya tanpa memblokir driver selamanya.
+3. Pada Fase 6 ini Gateway tidak menggunakan *Redis Adapter* (keterbatasan 1 instance).
+**Konsekuensi:** 
+Garbage collection memori harus diurus secara manual (`handleDisconnect` dan saat event status `COMPLETED`). Jika aplikasi di-scale menjadi *multi-instance*, wajib memasang *Redis Adapter*.

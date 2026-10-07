@@ -60,10 +60,10 @@ Tiap task selesai bila memenuhi _Definition of Done_ di `AGENTS.md`.
 
 ## Hari 5 — Event-Driven
 
-- [ ] [W] Order: dua client RMQ (`notification_queue`, `gateway_queue`), emit `order.*`
-- [ ] [W] Notification Service: `@EventPattern` untuk 3 event, log terstruktur
-- [ ] [W] Gateway hybrid: `connectMicroservice` RMQ `gateway_queue` (handler sementara: log)
-- [ ] [W] Location: listener RMQ `driver.location_updated` (upsert, tidak mengubah `is_available`)
+- [x] [W] Order: dua client RMQ (`notification_queue`, `gateway_queue`), emit `order.*`
+- [x] [W] Notification Service: `@EventPattern` untuk 3 event, log terstruktur
+- [x] [W] Gateway hybrid: `connectMicroservice` RMQ `gateway_queue` (handler sementara: log)
+- [x] [W] Location: listener RMQ `driver.location_updated` (upsert, tidak mengubah `is_available`)
 - [ ] [N] Correlation ID di log
 
 **Selesai bila:** ubah status order → muncul log di Notification dan Gateway.

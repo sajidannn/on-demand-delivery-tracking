@@ -104,19 +104,20 @@ export class OrderRepository {
     orderId: string,
     driverId: string | null,
     status: OrderStatus,
+    oldStatus: OrderStatus,
   ): Promise<OrderRow | null> {
     const result = await this.dataSource.query(
       `WITH updated AS (
          UPDATE orders
          SET driver_id = $2::uuid, status = $3::order_status, updated_at = now()
-         WHERE id = $1::uuid
+         WHERE id = $1::uuid AND status = $4::order_status
          RETURNING *
        )
        SELECT id, customer_id, driver_id, status, distance_m, fee, created_at, updated_at,
               ST_Y(pickup::geometry) AS pickup_lat, ST_X(pickup::geometry) AS pickup_lng,
               ST_Y(dropoff::geometry) AS dropoff_lat, ST_X(dropoff::geometry) AS dropoff_lng
        FROM updated;`,
-      [orderId, driverId, status],
+      [orderId, driverId, status, oldStatus],
     );
     const rows = Array.isArray(result[0]) ? result[0] : result;
     return rows.length > 0 ? (rows[0] as OrderRow) : null;
@@ -125,19 +126,20 @@ export class OrderRepository {
   async updateStatus(
     orderId: string,
     status: OrderStatus,
+    oldStatus: OrderStatus,
   ): Promise<OrderRow | null> {
     const result = await this.dataSource.query(
       `WITH updated AS (
          UPDATE orders
          SET status = $2::order_status, updated_at = now()
-         WHERE id = $1::uuid
+         WHERE id = $1::uuid AND status = $3::order_status
          RETURNING *
        )
        SELECT id, customer_id, driver_id, status, distance_m, fee, created_at, updated_at,
               ST_Y(pickup::geometry) AS pickup_lat, ST_X(pickup::geometry) AS pickup_lng,
               ST_Y(dropoff::geometry) AS dropoff_lat, ST_X(dropoff::geometry) AS dropoff_lng
        FROM updated;`,
-      [orderId, status],
+      [orderId, status, oldStatus],
     );
     const rows = Array.isArray(result[0]) ? result[0] : result;
     return rows.length > 0 ? (rows[0] as OrderRow) : null;

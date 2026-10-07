@@ -85,6 +85,12 @@ export class LocationServiceService {
     return { released };
   }
 
+  async updateLocation(driverId: string, lat: number, lng: number): Promise<void> {
+    this.assertCoordinate(lat, lng);
+    await this.repo.upsertLocation(driverId, lng, lat);
+    this.logger.debug(`Location updated via RMQ for driver ${driverId}`);
+  }
+
   private assertCoordinate(lat: number, lng: number): void {
     if (!(lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180)) {
       throw new RpcException({

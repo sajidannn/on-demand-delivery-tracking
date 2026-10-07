@@ -61,7 +61,7 @@ Request terlindungi: Gateway guard → TCP `auth.validate_token` → `{ userId, 
 2. Order: hitung jarak (`ST_Distance`), simpan `PENDING`.
 3. Order → gRPC `ReserveNearestDriver(pickup, radius)`. Location mengunci satu driver secara atomik.
 4. Ada driver (`found: true`) → status `DRIVER_ASSIGNED`, `driver_id` diisi, emit `order.driver_assigned`. Jika update DB gagal, kompensasi dengan `ReleaseDriver`. Jika tidak ada driver → `NO_DRIVER_AVAILABLE`.
-5. Order emit event ke `notification_queue` dan `gateway_queue`.
+5. Order emit event ke `notification_queue` dan `gateway_queue`. (Catatan: Consumer NestJS default memakai `noAck: true` / auto-ack. Jika consumer crash saat memproses event, event tersebut hilang).
 6. Notification: log. Gateway: push `order:status` ke room `order:{id}` dan ke driver.
 
 ### 4.4 Update status
@@ -79,6 +79,7 @@ Bila status berubah ke `COMPLETED`, panggil gRPC `ReleaseDriver` ke Location (be
 ## 5. Catatan Desain Penting
 
 - **Fan-out RMQ di NestJS:** transport RMQ Nest mengirim ke _satu queue_; banyak consumer di queue sama akan berbagi pesan (round-robin), bukan menerima semuanya. Karena `order.status_changed` dibutuhkan Notification **dan** Gateway, Order punya dua client RMQ (`notification_queue`, `gateway_queue`) dan emit ke keduanya. Ini keputusan sadar (ADR-006).
+- **Keterbatasan noAck (Auto-Ack):** RabbitMQ transport di NestJS secara default memakai mode `noAck: true`. Artinya pesan langsung dianggap berhasil ("di-ack") begitu ditarik oleh aplikasi (bahkan sebelum masuk fungsi handler). Jika aplikasi mati di tengah proses handler, pesan akan hilang (tidak akan di-requeue). Untuk lingkungan produksi nyata, manual acknowledgement harus diimplementasikan.
 - **Hybrid app:** Gateway = HTTP + WebSocket + microservice RMQ listener. Location = gRPC server + RMQ listener.
 - **Idempotensi event:** tidak diimplementasi (out of scope); catat sebagai keterbatasan.
 - **Konsistensi:** Order menyimpan `driver_id` sebagai referensi longgar (tanpa FK lintas DB).

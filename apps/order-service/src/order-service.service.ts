@@ -78,10 +78,10 @@ export class OrderServiceService implements OnModuleInit {
       `Order created: ${orderRow.id} for customer ${payload.customerId}`,
     );
 
-    await this.publisher.created({
+    this.publisher.created({
       orderId: orderRow.id,
       customerId: payload.customerId,
-    });
+    }).catch(e => this.logger.error('Failed to publish order.created', e));
 
     const radiusM = Number(this.configService.get('SEARCH_RADIUS_M', 3000));
 
@@ -112,18 +112,27 @@ export class OrderServiceService implements OnModuleInit {
           orderRow.id,
           response.driver.driverId,
           OrderStatus.DRIVER_ASSIGNED,
+          orderRow.status,
         );
+
+        if (!updatedRow) {
+          throw new RpcException({
+            code: 'INTERNAL',
+            message: 'Gagal update status order ke DRIVER_ASSIGNED',
+          });
+        }
+
         this.logger.log(
           `Driver ${response.driver.driverId} assigned to order ${orderRow.id}`,
         );
 
-        await this.publisher.driverAssigned({
+        this.publisher.driverAssigned({
           orderId: orderRow.id,
           customerId: payload.customerId,
           driverId: response.driver.driverId,
-        });
+        }).catch(e => this.logger.error('Failed to publish order.driver_assigned', e));
 
-        return this.toOrderDto(updatedRow!);
+        return this.toOrderDto(updatedRow);
       } else {
         this.stateMachine.validateTransition(
           orderRow.status,
@@ -133,16 +142,19 @@ export class OrderServiceService implements OnModuleInit {
         const updatedRow = await this.orderRepository.updateStatus(
           orderRow.id,
           OrderStatus.NO_DRIVER_AVAILABLE,
+          orderRow.status,
         );
+        
+        const rowToReturn = updatedRow || { ...orderRow, status: OrderStatus.NO_DRIVER_AVAILABLE };
         this.logger.log(`No driver available for order ${orderRow.id}`);
 
-        await this.publisher.statusChanged({
+        this.publisher.statusChanged({
           orderId: orderRow.id,
           customerId: payload.customerId,
           status: OrderStatus.NO_DRIVER_AVAILABLE,
-        });
+        }).catch(e => this.logger.error('Failed to publish order.status_changed', e));
 
-        return this.toOrderDto(updatedRow!);
+        return this.toOrderDto(rowToReturn);
       }
     } catch (error) {
       this.logger.error(
@@ -155,15 +167,18 @@ export class OrderServiceService implements OnModuleInit {
       const updatedRow = await this.orderRepository.updateStatus(
         orderRow.id,
         OrderStatus.NO_DRIVER_AVAILABLE,
+        orderRow.status,
       );
 
-      await this.publisher.statusChanged({
+      const rowToReturn = updatedRow || { ...orderRow, status: OrderStatus.NO_DRIVER_AVAILABLE };
+
+      this.publisher.statusChanged({
         orderId: orderRow.id,
         customerId: payload.customerId,
         status: OrderStatus.NO_DRIVER_AVAILABLE,
-      });
+      }).catch(e => this.logger.error('Failed to publish order.status_changed', e));
 
-      return this.toOrderDto(updatedRow!);
+      return this.toOrderDto(rowToReturn);
     }
   }
 
@@ -215,19 +230,27 @@ export class OrderServiceService implements OnModuleInit {
     const updatedRow = await this.orderRepository.updateStatus(
       payload.orderId,
       payload.status,
+      orderRow.status,
     );
 
-    if (payload.status === OrderStatus.COMPLETED) {
-      await this.releaseQuietly(payload.orderId);
+    if (!updatedRow) {
+      throw new RpcException({
+        code: 'INVALID_STATUS_TRANSITION',
+        message: 'Order sudah diperbarui oleh proses lain',
+      });
     }
 
-    await this.publisher.statusChanged({
+    if (payload.status === OrderStatus.COMPLETED) {
+      this.releaseQuietly(payload.orderId); // fire and forget
+    }
+
+    this.publisher.statusChanged({
       orderId: payload.orderId,
       customerId: orderRow.customer_id,
       driverId: payload.driverId,
       status: payload.status,
-    });
+    }).catch(e => this.logger.error('Failed to publish order.status_changed', e));
 
-    return this.toOrderDto(updatedRow!);
+    return this.toOrderDto(updatedRow);
   }
 }

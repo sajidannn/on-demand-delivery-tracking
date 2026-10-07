@@ -83,3 +83,9 @@ Format: Konteks → Keputusan → Konsekuensi. Status semua: **Accepted**. Janga
 **Konteks:** Menghindari race condition saat dua order mencoba mencari dan mengunci driver yang sama secara bersamaan, serta memastikan satu driver hanya melayani satu order aktif.
 **Keputusan:** Menambah kolom `current_order_id` pada `driver_locations`. Menggunakan `FOR UPDATE SKIP LOCKED` dalam satu statement SQL atomik untuk menemukan dan langsung mereservasi driver terdekat. Alternatif yang ditolak: mengubah `is_available`, karena ini harus murni mewakili niat (online/offline).
 **Konsekuensi:** Lokasi punya dua operasi baru: reserve dan release. Order Service bertanggung jawab melepas driver (`ReleaseDriver`) ketika order sudah `COMPLETED` atau jika terjadi error setelah reservasi berhasil (kompensasi).
+
+## ADR-014 — Penanganan Timeout Location Service saat Pembuatan Order
+
+**Konteks:** Saat Customer membuat Order baru (`POST /orders`), Order Service mencari driver secara synchronous ke Location Service via gRPC. Pemanggilan ini dapat gagal (timeout, service down). Awalnya direncanakan mengembalikan error 503 (Order tetap PENDING).
+**Keputusan:** Jika pencarian driver gagal atau timeout, Order Service tetap menyimpan order tersebut ke database dengan status `NO_DRIVER_AVAILABLE` (sebagai status akhir) dan mengembalikan respons HTTP 201 sukses.
+**Konsekuensi:** Customer tidak kehilangan niat transaksinya walau sistem backend sibuk/bermasalah. Respons cepat, namun state order langsung tertutup tanpa driver. Pada catch-block, rilis asinkron (`ReleaseDriver`) tetap dipanggil secara best-effort sebagai kompensasi bila gRPC macet di tengah jalan. Error yang dilempar harus ditangani hati-hati agar tidak memunculkan TypeError jika data row kosong.

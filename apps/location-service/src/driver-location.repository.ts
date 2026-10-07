@@ -98,4 +98,14 @@ export class DriverLocationRepository {
       [driverId],
     );
   }
+
+  async upsertLocation(driverId: string, lng: number, lat: number): Promise<void> {
+    await this.dataSource.query(
+      `INSERT INTO driver_locations (driver_id, is_available, location)
+       VALUES ($1, false, ST_SetSRID(ST_MakePoint($2, $3), 4326)::geography)
+       ON CONFLICT (driver_id) DO UPDATE
+       SET location = EXCLUDED.location, updated_at = now()`,
+      [driverId, lng, lat],
+    );
+  }
 }

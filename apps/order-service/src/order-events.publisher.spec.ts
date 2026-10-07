@@ -59,11 +59,18 @@ describe('OrderEventsPublisher', () => {
   });
 
   it('publish should timeout and not throw', async () => {
+    vi.useFakeTimers();
     // delay > 2000ms
     notifClient.emit.mockReturnValue(of(undefined).pipe(delay(2500)));
     const event = { orderId: 'o1', customerId: 'c1' };
     
-    await expect(publisher.created(event)).resolves.toBeUndefined();
+    const promise = publisher.created(event);
+    
+    // Advance timers past the 2000ms timeout
+    vi.advanceTimersByTime(2100);
+    
+    await expect(promise).resolves.toBeUndefined();
     expect(notifClient.emit).toHaveBeenCalled();
+    vi.useRealTimers();
   });
 });

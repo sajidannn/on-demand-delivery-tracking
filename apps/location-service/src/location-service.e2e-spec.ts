@@ -244,4 +244,49 @@ describe('LocationServiceService', () => {
       );
     });
   });
+
+  describe('Ping Lokasi Real-time (RMQ)', () => {
+    it('should upsert location via ping without making driver available (Scenario 6 & 7)', async () => {
+      // Driver 7 offline ping
+      await service.updateLocation('00000000-0000-0000-0000-000000000007', -6.1, 106.1);
+      
+      const drivers = await service.findNearest({
+        lat: -6.1,
+        lng: 106.1,
+        radiusM: 10000,
+        limit: 10,
+      });
+      // Should not be found because is_available is false (default for new row)
+      const foundDriver7 = drivers.find((d) => d.driverId === '00000000-0000-0000-0000-000000000007');
+      expect(foundDriver7).toBeUndefined();
+
+      // Now make driver 7 available
+      await service.setAvailability({
+        driverId: '00000000-0000-0000-0000-000000000007',
+        isAvailable: true,
+        lat: -6.1,
+        lng: 106.1,
+      });
+
+      // Ping a new location
+      await service.updateLocation('00000000-0000-0000-0000-000000000007', -6.15, 106.15);
+
+      const drivers2 = await service.findNearest({
+        lat: -6.15,
+        lng: 106.15,
+        radiusM: 10000,
+        limit: 10,
+      });
+      const foundDriver7Again = drivers2.find((d) => d.driverId === '00000000-0000-0000-0000-000000000007');
+      expect(foundDriver7Again).toBeDefined();
+      expect(foundDriver7Again?.lat).toBe(-6.15);
+      expect(foundDriver7Again?.lng).toBe(106.15);
+    });
+
+    it('should throw error for invalid coordinates in ping (Scenario 8)', async () => {
+      await expect(
+        service.updateLocation('00000000-0000-0000-0000-000000000008', 999, 999),
+      ).rejects.toMatchObject({ error: { code: status.INVALID_ARGUMENT } });
+    });
+  });
 });

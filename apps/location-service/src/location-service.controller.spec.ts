@@ -9,6 +9,7 @@ describe('LocationServiceController', () => {
   const serviceMock = {
     findNearest: vi.fn(),
     setAvailability: vi.fn(),
+    updateLocation: vi.fn(),
   };
 
   beforeEach(async () => {
@@ -62,6 +63,21 @@ describe('LocationServiceController', () => {
       });
 
       expect(result).toEqual({ ok: true });
+    });
+  });
+
+  describe('handleLocationUpdated', () => {
+    it('should call updateLocation on service', async () => {
+      serviceMock.updateLocation = vi.fn().mockResolvedValue(undefined);
+
+      await controller.handleLocationUpdated({
+        driverId: 'uuid-1',
+        lat: -6.9,
+        lng: 107.6,
+        ts: Date.now(),
+      });
+
+      expect(serviceMock.updateLocation).toHaveBeenCalledWith('uuid-1', -6.9, 107.6);
     });
   });
 });

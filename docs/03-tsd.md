@@ -289,6 +289,11 @@ Karena ESM, path file proto dirujuk dengan `import.meta.dirname` (atau `fileURLT
 
 Order memakai dua `ClientProxy` RMQ (satu per queue tujuan). Nama queue dan event ada di `libs/common/constants` dan `libs/common/events`.
 
+**Catatan Konfigurasi RMQ:**
+- Seluruh antrean dibuat dengan opsi `durable: true` dan pengiriman pesan beropsi `persistent: true` agar pesan tidak hilang bila RabbitMQ restart.
+- Publisher mengirim event secara *best-effort* (tanpa mekanisme retry/outbox pattern yang rumit, namun menggunakan timeout `timeout(2000)` agar jika RMQ mati, transaksi utama tetap berjalan).
+- Perubahan status ke `NO_DRIVER_AVAILABLE` akibat timeout dari Location Service juga memicu event `order.status_changed`.
+
 ## 11. Error Code
 
 | Code                        | HTTP | Arti                   |

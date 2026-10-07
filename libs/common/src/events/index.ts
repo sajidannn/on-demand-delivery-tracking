@@ -1,3 +1,5 @@
+import { OrderStatus } from '../enums/order-status.enum.js';
+
 export interface DriverLocationUpdatedEvent {
   driverId: string;
   lat: number;
@@ -20,5 +22,5 @@ export interface OrderStatusChangedEvent {
   orderId: string;
   customerId: string;
   driverId?: string;
-  status: string;
+  status: OrderStatus;
 }

@@ -1,6 +1,5 @@
 import { Observable, throwError, TimeoutError } from 'rxjs';
 import { catchError, timeout } from 'rxjs/operators';
-import { RpcException } from '@nestjs/microservices';
 
 export function callService<T>(
   observable: Observable<T>,

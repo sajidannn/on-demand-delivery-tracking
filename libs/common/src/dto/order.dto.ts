@@ -1,10 +1,7 @@
 import { Type } from 'class-transformer';
 import {
-  IsEnum,
   IsNotEmpty,
   IsNumber,
-  IsOptional,
-  IsString,
   IsUUID,
   Max,
   Min,

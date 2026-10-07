@@ -2,6 +2,10 @@ export const GATEWAY_QUEUE = 'gateway_queue';
 export const NOTIFICATION_QUEUE = 'notification_queue';
 export const LOCATION_QUEUE = 'location_queue';
 
+export const NOTIFICATION_CLIENT_TOKEN = 'NOTIFICATION_CLIENT';
+export const GATEWAY_CLIENT_TOKEN = 'GATEWAY_CLIENT';
+export const RMQ_QUEUE_OPTIONS = { durable: true } as const;
+
 export const AUTH_SERVICE_TOKEN = 'AUTH_SERVICE';
 export const ORDER_SERVICE_TOKEN = 'ORDER_SERVICE';
 

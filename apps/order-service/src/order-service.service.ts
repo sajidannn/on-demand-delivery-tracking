@@ -13,6 +13,7 @@ import {
 } from '@app/common';
 import { OrderRepository, OrderRow } from './order.repository.js';
 import { OrderStateMachine } from './order-state-machine.service.js';
+import { OrderEventsPublisher } from './order-events.publisher.js';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
 import { Metadata } from '@grpc/grpc-js';
@@ -27,6 +28,7 @@ export class OrderServiceService implements OnModuleInit {
     private readonly orderRepository: OrderRepository,
     private readonly stateMachine: OrderStateMachine,
     private readonly configService: ConfigService,
+    private readonly publisher: OrderEventsPublisher,
   ) {}
 
   onModuleInit() {
@@ -76,6 +78,11 @@ export class OrderServiceService implements OnModuleInit {
       `Order created: ${orderRow.id} for customer ${payload.customerId}`,
     );
 
+    await this.publisher.created({
+      orderId: orderRow.id,
+      customerId: payload.customerId,
+    });
+
     const radiusM = Number(this.configService.get('SEARCH_RADIUS_M', 3000));
 
     try {
@@ -109,6 +116,13 @@ export class OrderServiceService implements OnModuleInit {
         this.logger.log(
           `Driver ${response.driver.driverId} assigned to order ${orderRow.id}`,
         );
+
+        await this.publisher.driverAssigned({
+          orderId: orderRow.id,
+          customerId: payload.customerId,
+          driverId: response.driver.driverId,
+        });
+
         return this.toOrderDto(updatedRow!);
       } else {
         this.stateMachine.validateTransition(
@@ -121,6 +135,13 @@ export class OrderServiceService implements OnModuleInit {
           OrderStatus.NO_DRIVER_AVAILABLE,
         );
         this.logger.log(`No driver available for order ${orderRow.id}`);
+
+        await this.publisher.statusChanged({
+          orderId: orderRow.id,
+          customerId: payload.customerId,
+          status: OrderStatus.NO_DRIVER_AVAILABLE,
+        });
+
         return this.toOrderDto(updatedRow!);
       }
     } catch (error) {
@@ -135,6 +156,12 @@ export class OrderServiceService implements OnModuleInit {
         orderRow.id,
         OrderStatus.NO_DRIVER_AVAILABLE,
       );
+
+      await this.publisher.statusChanged({
+        orderId: orderRow.id,
+        customerId: payload.customerId,
+        status: OrderStatus.NO_DRIVER_AVAILABLE,
+      });
 
       return this.toOrderDto(updatedRow!);
     }
@@ -193,6 +220,13 @@ export class OrderServiceService implements OnModuleInit {
     if (payload.status === OrderStatus.COMPLETED) {
       await this.releaseQuietly(payload.orderId);
     }
+
+    await this.publisher.statusChanged({
+      orderId: payload.orderId,
+      customerId: orderRow.customer_id,
+      driverId: payload.driverId,
+      status: payload.status,
+    });
 
     return this.toOrderDto(updatedRow!);
   }

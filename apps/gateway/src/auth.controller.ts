@@ -24,7 +24,6 @@ import {
   PATTERNS,
   RegisterDto,
   LoginDto,
-  Role,
   UserResponseDto,
   TokenResponseDto,
   ErrorResponseDto,

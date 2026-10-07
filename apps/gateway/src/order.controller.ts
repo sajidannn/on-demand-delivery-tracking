@@ -77,7 +77,8 @@ export class OrderController {
     @Body() body: CreateOrderDto,
   ): Promise<OrderDto> {
     const payload: CreateOrderPayloadDto = {
-      ...body,
+      pickup: body.pickup,
+      dropoff: body.dropoff,
       customerId: req.user.userId,
     };
     return firstValueFrom(

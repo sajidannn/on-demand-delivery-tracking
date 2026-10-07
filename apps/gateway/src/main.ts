@@ -2,7 +2,12 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { GatewayModule } from './gateway.module.js';
-import { RpcExceptionToHttpFilter } from '@app/common';
+import {
+  RpcExceptionToHttpFilter,
+  GATEWAY_QUEUE,
+  getRmqOptions,
+} from '@app/common';
+import { MicroserviceOptions } from '@nestjs/microservices';
 
 async function bootstrap() {
   const app = await NestFactory.create(GatewayModule);
@@ -26,6 +31,14 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('docs', app, document);
 
+  app.connectMicroservice<MicroserviceOptions>(
+    getRmqOptions(
+      process.env.RABBITMQ_URL ?? 'amqp://guest:guest@localhost:5672',
+      GATEWAY_QUEUE,
+    ),
+  );
+
+  await app.startAllMicroservices();
   await app.listen(process.env.GATEWAY_PORT ?? 3000);
 }
 await bootstrap();

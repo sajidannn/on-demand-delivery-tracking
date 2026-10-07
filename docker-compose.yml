@@ -16,10 +16,14 @@ services:
   rabbitmq:
     image: rabbitmq:management
     container_name: oddt-rabbitmq
+    hostname: rabbitmq
     ports:
       - '5672:5672'
       - '15672:15672'
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
     restart: unless-stopped
 
 volumes:
   pgdata:
+  rabbitmq_data:

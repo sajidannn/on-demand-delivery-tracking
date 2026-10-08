@@ -23,7 +23,7 @@ describe('TrackingGateway', () => {
   beforeEach(async () => {
     authClient = { send: vi.fn() };
     orderClient = { send: vi.fn() };
-    locationClient = { emit: vi.fn() };
+    locationClient = { emit: vi.fn(() => of({})) };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [

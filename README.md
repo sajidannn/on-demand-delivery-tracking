@@ -1,124 +1,261 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# On-Demand Delivery & Fleet Tracking
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Proyek latihan: mini sistem kurir instan (ala Gojek/Lalamove) dengan arsitektur microservice NestJS dan PostGIS. Customer membuat order, sistem otomatis memilih driver terdekat, dan customer bisa melihat posisi driver secara real-time.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+> Bukan untuk produksi. Tujuannya belajar: TCP, gRPC, RabbitMQ (event-driven), hybrid app, PostGIS, dua ORM (Prisma dan TypeORM), WebSocket, dan Swagger.
 
-## Description
+## Arsitektur
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+```mermaid
+flowchart TD
+    %% Styling
+    classDef client fill:#e1f5fe,stroke:#0288d1,stroke-width:2px,color:#000
+    classDef gateway fill:#fff3e0,stroke:#f57c00,stroke-width:2px,color:#000
+    classDef service fill:#e8f5e9,stroke:#388e3c,stroke-width:2px,color:#000
+    classDef rmq fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,stroke-dasharray: 5 5,color:#000
+    classDef db fill:#eceff1,stroke:#607d8b,stroke-width:2px,color:#000
 
-## Project setup
+    %% Clients
+    Customer(["👤 Customer App"]):::client
+    Driver(["🚗 Driver App"]):::client
 
-```bash
-$ bun install
+    %% API Gateway
+    Gateway["API Gateway\n(Port 3000)"]:::gateway
+
+    %% Microservices
+    AuthSvc["🛡️ Auth Service\n(TCP)"]:::service
+    OrderSvc["📦 Order Service\n(TCP)"]:::service
+    LocSvc["📍 Location Service\n(gRPC & TCP)"]:::service
+    NotifSvc["🔔 Notification Service\n(TCP)"]:::service
+
+    %% RabbitMQ Queues
+    subgraph RabbitMQ ["🐇 RabbitMQ Message Broker (AMQP)"]
+        Q_Gateway[("gateway_queue")]:::rmq
+        Q_Notif[("notification_queue")]:::rmq
+        Q_Loc[("location_queue")]:::rmq
+    end
+
+    %% Databases
+    DB_Auth[(PostgreSQL\nauth_db)]:::db
+    DB_Order[(PostgreSQL\norder_db)]:::db
+    DB_Loc[(PostgreSQL + PostGIS\nlocation_db)]:::db
+
+    %% ==========================================
+    %% 1. CLIENT TO GATEWAY (HTTP & WEBSOCKET)
+    %% ==========================================
+    Customer -- "HTTP REST\nPOST /orders, GET /orders" --> Gateway
+    Driver -- "HTTP REST\nPOST /drivers/online, PATCH /orders/:id/status" --> Gateway
+    Customer <== "WebSocket\nEmit: order:subscribe\nListen: order:location, order:status" ==> Gateway
+    Driver <== "WebSocket\nEmit: driver:location\nListen: order:status" ==> Gateway
+
+    %% ==========================================
+    %% 2. GATEWAY TO MICROSERVICES (SYNCHRONOUS)
+    %% ==========================================
+    Gateway -- "TCP\nPattern: auth.login, auth.validate_token, dll." --> AuthSvc
+    Gateway -- "TCP\nPattern: order.create, order.update_status, dll." --> OrderSvc
+    Gateway -- "gRPC\nRPC: SetDriverAvailability" --> LocSvc
+
+    %% ==========================================
+    %% 3. INTER-SERVICE COMMUNICATION
+    %% ==========================================
+    OrderSvc -- "gRPC\nRPC: ReserveNearestDriver\nRPC: ReleaseDriver" --> LocSvc
+
+    %% ==========================================
+    %% 4. PUBLISHER TO RABBITMQ (ASYNCHRONOUS)
+    %% ==========================================
+    Gateway -. "AMQP Emit\nPattern: driver.location_updated" .-> Q_Loc
+    OrderSvc -. "AMQP Emit\nPattern: order.created, order.status_changed" .-> Q_Notif
+    OrderSvc -. "AMQP Emit\nPattern: order.driver_assigned, order.status_changed" .-> Q_Gateway
+
+    %% ==========================================
+    %% 5. RABBITMQ TO CONSUMERS (ASYNCHRONOUS)
+    %% ==========================================
+    Q_Notif -. "AMQP Consume\n@EventPattern" .-> NotifSvc
+    Q_Loc -. "AMQP Consume\n@EventPattern" .-> LocSvc
+    Q_Gateway -. "AMQP Consume\n(Broadcast WS ke Klien)" .-> Gateway
+
+    %% ==========================================
+    %% 6. SERVICES TO DATABASE
+    %% ==========================================
+    AuthSvc --- DB_Auth
+    OrderSvc --- DB_Order
+    LocSvc --- DB_Loc
 ```
 
-## Compile and run the project
+| Service      | Transport                         | Tugas                                                      |
+| ------------ | --------------------------------- | ---------------------------------------------------------- |
+| Gateway      | HTTP + WebSocket + RMQ            | Pintu masuk client, JWT guard, Swagger, WebSocket tracking |
+| Auth         | TCP                               | Register, login, validasi token                            |
+| Order        | TCP + gRPC client + RMQ publisher | Siklus hidup order, state machine, assign driver           |
+| Location     | gRPC + RMQ consumer               | Posisi driver, pencarian terdekat (PostGIS), kunci driver  |
+| Notification | RMQ consumer                      | Mengonsumsi event order dan mencatat notifikasi (log)      |
+
+Dokumentasi lengkap ada di folder [`docs/`](docs): PRD, SDD, TSD, rencana implementasi, dan ADR. Aturan kerja untuk agent/kontributor ada di [`AGENTS.md`](AGENTS.md).
+
+## Prasyarat
+
+- [Bun](https://bun.sh)
+- Docker dan Docker Compose
+- Node.js LTS (dipakai Nest CLI)
+
+## Setup
 
 ```bash
-# development
-$ bun run start
-
-# watch mode
-$ bun run start:dev
-
-# production mode
-$ bun run start:prod
+cp .env.example .env
+docker compose up -d          # PostgreSQL + PostGIS dan RabbitMQ
+bun install
+bun run db:generate:auth
+bun run db:migrate:all        # auth (Prisma), order dan location (TypeORM)
 ```
 
-## Run tests
+`docker/init.sql` (pembuatan database dan extension PostGIS) hanya berjalan saat volume Postgres pertama kali dibuat. Untuk mengulang dari nol: `docker compose down -v`.
+
+## Menjalankan
+
+Satu perintah untuk kelima service:
 
 ```bash
-# unit tests
-$ bun run test
-
-# e2e tests
-$ bun run test:e2e
-
-# test coverage
-$ bun run test:cov
+bun run dev:all
 ```
 
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+Atau satu per satu (satu terminal per service):
 
 ```bash
-$ bun install -g @nestjs/mau
-$ mau deploy
+bunx nest start gateway --watch
+bunx nest start auth-service --watch
+bunx nest start order-service --watch
+bunx nest start location-service --watch
+bunx nest start notification-service --watch
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+| Komponen                   | Alamat                                        |
+| -------------------------- | --------------------------------------------- |
+| Gateway (HTTP + WebSocket) | `http://localhost:3000`                       |
+| Swagger                    | `http://localhost:3000/docs`                  |
+| Auth (TCP)                 | `4001`                                        |
+| Order (TCP)                | `4002`                                        |
+| Location (gRPC)            | `50051`                                       |
+| PostgreSQL                 | `5432` (`auth_db`, `order_db`, `location_db`) |
+| RabbitMQ                   | `5672` (UI: `http://localhost:15672`)         |
 
-## Observability
+Cek cepat: `curl localhost:3000/health` harus mengembalikan `{"status":"ok"}`.
 
-In production applications, observability is essential for understanding how your system behaves, detecting issues early, and maintaining reliable performance.
+## API
 
-[NestJS Observe](https://observe.nestjs.com) automatically instruments your NestJS application, giving you deep visibility into your system with minimal setup:
+Dokumentasi interaktif (lengkap dengan contoh request dan respons) ada di `/docs`. Ringkasnya:
 
-- **Distributed tracing:** Follow requests across services and understand how they flow through your system.
-- **Waterfall analysis:** Visualize request execution and identify slow operations, bottlenecks, and unexpected delays.
-- **Performance analysis:** Analyze application performance in real time and quickly pinpoint areas that need optimization.
-- **Metrics:** Track key application and infrastructure metrics to understand system health and performance trends.
-- **Logging:** Centralize and correlate logs with traces and other telemetry to make debugging easier.
-- **Error tracking:** Detect errors quickly and investigate their root causes with the surrounding context.
-- **SLA monitoring:** Track service-level objectives and identify when your application is approaching or exceeding defined thresholds.
-- **Alarms and alerts:** Set up alerts for critical errors, performance degradation, SLA violations, and other anomalies so your team can react quickly.
+| Method | Path                                  | Role                                 |
+| ------ | ------------------------------------- | ------------------------------------ |
+| POST   | `/auth/register`, `/auth/login`       | publik                               |
+| GET    | `/auth/me`                            | semua                                |
+| POST   | `/drivers/online`, `/drivers/offline` | DRIVER                               |
+| POST   | `/orders`                             | CUSTOMER                             |
+| GET    | `/orders`, `/orders/:id`              | semua (hanya milik sendiri)          |
+| PATCH  | `/orders/:id/status`                  | DRIVER (hanya driver yang di-assign) |
 
-To add it to this project:
+Status order: `PENDING → DRIVER_ASSIGNED → PICKED_UP → COMPLETED` (atau `NO_DRIVER_AVAILABLE`).
+
+### WebSocket (Socket.IO)
+
+Koneksi: `io("http://localhost:3000", { auth: { token: "<JWT>" } })`.
+
+| Event             | Arah            | Role     | Keterangan                                                                                       |
+| ----------------- | --------------- | -------- | ------------------------------------------------------------------------------------------------ |
+| `driver:location` | client → server | DRIVER   | `{ lat, lng, orderId? }`; bila `orderId` ada dan milik driver itu, lokasi diteruskan ke customer |
+| `order:subscribe` | client → server | CUSTOMER | `{ orderId }`; ack `{ ok, status, driverId }`                                                    |
+| `order:location`  | server → client |          | `{ orderId, lat, lng, ts }`                                                                      |
+| `order:status`    | server → client |          | `{ orderId, status, driverId? }` (ke customer dan driver)                                        |
+
+## Mencoba
 
 ```bash
-$ bun install @nestjs/observe
+bun run scripts/seed-drivers.ts   # tiga driver online di sekitar Jakarta
+bun run demo:ws                   # demo: order, ping lokasi, perubahan status via WebSocket
 ```
 
-Then follow the [setup guide](https://docs.nestjs.com/observability/overview) - it takes a single import and an app key.
+Atau lewat Swagger/Postman (`order-delivery-tracking.postman_collection.json`).
 
-The free plan needs no payment details and covers 300,000 events a month. You can also browse the [live demo](https://www.observe-demo.nestjs.com/dashboard) first - the whole dashboard over a busy service's data, with nothing to install.
+## Tes
 
-## Resources
+```bash
+bun run lint
+bun run test         # unit test + tes integrasi Socket.IO (tanpa service lain)
+bun run test:e2e     # e2e: butuh docker compose up -d dan semua service hidup
+```
 
-Check out a few resources that may come in handy when working with NestJS:
+`test:e2e` menjalankan alur order penuh (HTTP + WebSocket) terhadap stack yang berjalan dan pengecekan kelengkapan Swagger, serta tes PostGIS Location (`location_test_db`).
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Auto-instrument your application with [NestJS Observe](https://observe.nestjs.com). Distributed tracing, metrics, and logging made easy. Error tracking and performance monitoring for your NestJS applications.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+## Skenario uji manual
 
-## Support
+| #   | Skenario                                          | Hasil yang diharapkan                                                                                     |
+| --- | ------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| 1   | Buat order, driver tersedia                       | Log Notification: `order.created` dan `order.driver_assigned` (2 log); Gateway menerima `driver_assigned` |
+| 2   | `PATCH` `PICKED_UP` lalu `COMPLETED`              | Log `order.status_changed` di Notification; customer dan driver menerima `order:status`                   |
+| 3   | Buat order tanpa driver                           | Status `NO_DRIVER_AVAILABLE`                                                                              |
+| 4   | Matikan Notification, buat 2 order, nyalakan lagi | Pesan menumpuk di `notification_queue` (Ready naik), lalu terproses semua                                 |
+| 5   | Matikan RabbitMQ, buat order                      | `POST /orders` tetap sukses; error publish tercatat di log Order                                          |
+| 6   | Ping driver dengan koordinat tidak valid          | Log `warn` di Location, service tidak crash                                                               |
+| 7   | Driver mengirim `orderId` milik driver lain       | Ditolak `FORBIDDEN`, tidak diteruskan ke room                                                             |
+| 8   | Customer lain subscribe order orang lain          | Ditolak `FORBIDDEN`, tidak join room                                                                      |
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+## Bukti Acceptance Criteria
 
-## Stay in touch
+| AC                                | Bukti                                                            |
+| --------------------------------- | ---------------------------------------------------------------- |
+| 01 Auth dan role                  | e2e alur order, `auth-service.controller.spec`                   |
+| 02 Assign otomatis / tanpa driver | e2e alur order, `order-service.service.spec`                     |
+| 03 Driver terdekat                | `location-service.e2e-spec`, e2e alur order                      |
+| 04 State machine                  | `order-state-machine.service.spec`, e2e alur order               |
+| 05 Hanya driver yang di-assign    | `order-service.service.spec`, e2e alur order                     |
+| 06 Event tercatat di Notification | log Notification (lihat bawah), `order-events.publisher.spec`    |
+| 07 `order:location` ke customer   | `tracking.gateway.integration.spec`, e2e alur order, `demo:ws`   |
+| 08 Swagger lengkap                | e2e (`/docs-json`), pengecekan manual `/docs`                    |
+| 09 Satu driver tidak dobel        | `location-service.e2e-spec` (reservasi konkuren), e2e alur order |
+| 10 Driver kembali tersedia        | e2e alur order                                                   |
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+Contoh log Notification untuk AC-06:
 
-## License
+```text
+[Nest] 785  - 10/08/2026, 3:44:37 AM     LOG [NotificationServiceController] {"event":"order.created","orderId":"1a0e7062-ca0f-473e-999a-1f5bfd2c8126","recipient":"521430c4-07e4-4711-a4a0-2f712a2fc1e9","message":"Order 1a0e7062-ca0f-473e-999a-1f5bfd2c8126 berhasil dibuat."}
+[Nest] 785  - 10/08/2026, 3:44:37 AM     LOG [NotificationServiceController] {"event":"order.driver_assigned","orderId":"1a0e7062-ca0f-473e-999a-1f5bfd2c8126","recipient":"521430c4-07e4-4711-a4a0-2f712a2fc1e9","message":"Driver ditemukan untuk order 1a0e7062-ca0f-473e-999a-1f5bfd2c8126."}
+[Nest] 785  - 10/08/2026, 3:44:37 AM     LOG [NotificationServiceController] {"event":"order.driver_assigned","orderId":"1a0e7062-ca0f-473e-999a-1f5bfd2c8126","recipient":"218c32b6-2388-46cd-8366-8242a92db4d7","message":"Kamu mendapat order 1a0e7062-ca0f-473e-999a-1f5bfd2c8126."}
+[Nest] 785  - 10/08/2026, 3:44:43 AM     LOG [NotificationServiceController] {"event":"order.status_changed","orderId":"1a0e7062-ca0f-473e-999a-1f5bfd2c8126","recipient":"521430c4-07e4-4711-a4a0-2f712a2fc1e9","message":"Status order 1a0e7062-ca0f-473e-999a-1f5bfd2c8126 berubah menjadi PICKED_UP."}
+```
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+## Struktur repo
+
+```
+apps/
+  gateway/ auth-service/ order-service/ location-service/ notification-service/
+libs/common/          # DTO, enum, konstanta, event, proto, util (tanpa entity ORM)
+docs/                 # PRD, SDD, TSD, rencana implementasi, ADR
+scripts/              # seed-drivers, demo WebSocket
+docker/init.sql       # database dan extension PostGIS
+```
+
+## Keterbatasan yang disengaja
+
+- Event RabbitMQ memakai `noAck` bawaan Nest (at-most-once di sisi consumer) dan publish best-effort tanpa outbox, jadi order bisa tersimpan tanpa event terkirim.
+- `ReleaseDriver` setelah `COMPLETED` best-effort; bila gagal, driver tetap terkunci sampai diperbaiki manual.
+- Room Socket.IO tersimpan di memori: hanya benar untuk satu instance Gateway (butuh Redis adapter bila di-scale).
+- Tidak ada pembayaran, tarif dinamis, retry saat driver menolak, atau refresh token. Tarif flat.
+- Jarak order dihitung garis lurus (`ST_Distance`), bukan rute jalan.
+
+## Troubleshooting
+
+| Gejala                                       | Penyebab / solusi                                                                                                                                    |
+| -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PRECONDITION_FAILED` dari RabbitMQ          | Opsi queue berbeda dari yang sudah ada; hapus queue lama di UI RabbitMQ lalu jalankan ulang                                                          |
+| `POST /orders` selalu `NO_DRIVER_AVAILABLE`  | Driver stale (ping terakhir lebih dari `DRIVER_STALE_SECONDS`, default 60 detik); panggil `POST /drivers/online` lagi atau naikkan nilainya saat dev |
+| `location_test_db` tidak ada saat `test:e2e` | `init.sql` tidak jalan ulang pada volume lama; buat database dan extension PostGIS manual atau `docker compose down -v`                              |
+| Port 3000 atau 5000 terpakai                 | Ubah `GATEWAY_PORT` / `LOCATION_HTTP_PORT` di `.env`                                                                                                 |
+| `test:e2e` gagal "Gateway tidak terjangkau"  | Jalankan `bun run dev:all` dulu                                                                                                                      |
+
+## Yang dipelajari
+
+- **Microservice NestJS:** tiga transport sekaligus (TCP, gRPC, RabbitMQ) dan hybrid app (HTTP/gRPC/RMQ dalam satu proses).
+- **Event-driven:** durable queue, fan-out lewat beberapa queue, semantik `emit` vs `send`, `noAck`, dan keterbatasan tanpa outbox.
+- **PostGIS:** `geography(Point,4326)`, index GiST, `ST_DWithin`, pencarian terdekat dengan `<->`, dan reservasi atomik dengan `FOR UPDATE SKIP LOCKED`.
+- **Dua ORM:** Prisma untuk Auth, TypeORM + raw SQL untuk data spasial, dengan batas antar service tetap lewat DTO/proto/event.
+- **WebSocket:** room per order dan per user, autentikasi handshake, validasi kepemilikan di server.
+- **Dokumentasi dan tes:** Swagger, unit test, tes integrasi Socket.IO, dan e2e terhadap stack nyata.

@@ -82,8 +82,24 @@ async function run() {
     });
   });
 
+  let driverCompleted = false;
+  let customerCompleted = false;
+
+  const checkDone = () => {
+    if (driverCompleted && customerCompleted) {
+      console.log('[System] Kedua pihak menerima COMPLETED. Menutup socket...');
+      driverSocket.disconnect();
+      customerSocket.disconnect();
+      process.exit(0);
+    }
+  };
+
   customerSocket.on('order:status', (data) => {
     console.log('[Customer] 🔔 Received order:status ->', data);
+    if (data?.status === 'COMPLETED') {
+      customerCompleted = true;
+      checkDone();
+    }
   });
 
   customerSocket.on('order:location', (data) => {
@@ -92,6 +108,10 @@ async function run() {
 
   driverSocket.on('order:status', (data) => {
     console.log('[Driver] 🔔 Received order:status ->', data);
+    if (data?.status === 'COMPLETED') {
+      driverCompleted = true;
+      checkDone();
+    }
   });
 
   driverSocket.on('connect', () => {

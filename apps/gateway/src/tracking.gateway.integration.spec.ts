@@ -31,7 +31,7 @@ describe('TrackingGateway + Socket.IO sungguhan', () => {
       }),
     ),
   };
-  const locationClient = { emit: vi.fn() };
+  const locationClient = { emit: vi.fn(() => of({})) };
   const gateway = new TrackingGateway(
     authClient as never,
     orderClient as never,
@@ -61,10 +61,9 @@ describe('TrackingGateway + Socket.IO sungguhan', () => {
     await new Promise<void>((r) => http.listen(0, () => r()));
     port = (http.address() as AddressInfo).port;
   });
-  afterAll(() => {
+  afterAll(async () => {
     clients.forEach((c) => c.close());
-    io.close();
-    http.close();
+    await io.close();
   });
 
   it('alur penuh: subscribe, ping ke room, status ke customer DAN driver', async () => {

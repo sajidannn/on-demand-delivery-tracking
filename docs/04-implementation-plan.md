@@ -81,10 +81,10 @@ Tiap task selesai bila memenuhi _Definition of Done_ di `AGENTS.md`.
 
 ## Hari 7 — Buffer & Finishing
 
-- [ ] [W] Perbaiki bug tersisa, verifikasi seluruh Acceptance Criteria PRD
-- [ ] [W] 1 e2e test alur order (register → online → order → status → completed)
-- [ ] [W] Review Swagger: semua endpoint lengkap contoh & error
-- [ ] [W] README (cara menjalankan + skenario uji)
+- [x] [W] Perbaiki bug tersisa, verifikasi seluruh Acceptance Criteria PRD
+- [x] [W] 1 e2e test alur order (register → online → order → status → completed)
+- [x] [W] Review Swagger: semua endpoint lengkap contoh & error
+- [x] [W] README (cara menjalankan + skenario uji)
 - [ ] [B] Geofence arrival (`ST_DWithin` 50 m ke pickup)
 - [ ] [B] `location_history` + `ST_MakeLine` untuk rute
 

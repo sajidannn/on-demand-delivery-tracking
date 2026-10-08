@@ -38,7 +38,7 @@ async function bootstrap() {
 
   await app.startAllMicroservices();
   // Location service doesn't really need HTTP, but create() makes an HTTP server.
-  // We can just listen on a random port or a specific port to keep the process alive.
-  await app.listen(process.env.LOCATION_HTTP_PORT || 5000);
+  // We can just initialize it to keep the process alive for gRPC and RMQ.
+  await app.init();
 }
 await bootstrap();

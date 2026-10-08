@@ -331,7 +331,9 @@ FLAT_FEE=10000
 SEARCH_RADIUS_M=3000
 # location
 LOCATION_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/location_db
-DRIVER_STALE_SECONDS=60
+LOCATION_TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/location_test_db
+LOCATION_HTTP_PORT=5000
+DRIVER_STALE_SECONDS=600
 ```
 
 ## 13. Perintah Standar
@@ -339,10 +341,13 @@ DRIVER_STALE_SECONDS=60
 ```
 docker compose up -d
 bun install
+bun run dev:all               # Menjalankan seluruh service
 bun run start:dev <app>       # mis. gateway, auth-service
+bun run db:migrate:all        # Migrasi seluruh database
 bun run db:migrate:auth       # prisma migrate
 bun run db:migrate:order      # migrasi TypeORM/SQL
 bun run db:migrate:location
 bun run test                  # Vitest unit
 bun run test:e2e              # Vitest e2e
+bun run demo:ws               # Demo simulasi Socket.IO
 ```

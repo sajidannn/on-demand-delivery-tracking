@@ -62,11 +62,11 @@ Alur order → assign driver → antar → selesai berjalan end-to-end secara lo
 
 ## 7. Definition of Done (proyek)
 
-- `docker compose up -d` + satu perintah start menjalankan semua service.
-- Semua AC di atas lolos (manual atau e2e).
-- 1 e2e test untuk alur order utama.
-- README berisi cara menjalankan dan skenario uji.
-- Semua dokumen di `docs/` mutakhir.
+- [x] `docker compose up -d` + satu perintah start menjalankan semua service.
+- [x] Semua AC di atas lolos (manual atau e2e).
+- [x] 1 e2e test untuk alur order utama.
+- [x] README berisi cara menjalankan dan skenario uji.
+- [x] Semua dokumen di `docs/` mutakhir.
 
 ## 8. Asumsi
 

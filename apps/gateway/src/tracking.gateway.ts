@@ -109,6 +109,8 @@ export class TrackingGateway implements OnGatewayConnection, OnGatewayDisconnect
       lat: dto.lat,
       lng: dto.lng,
       ts: Date.now(),
+    }).subscribe({
+      error: (err) => this.logger.warn(`Failed to emit location to RMQ: ${(err as Error)?.message || err}`),
     });
     this.logger.debug(`[driver:location] Forwarded to RMQ for ${driverId}`);
 

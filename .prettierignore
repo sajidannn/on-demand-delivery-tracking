@@ -1,1 +1,3 @@
 libs/common/src/proto/location.pb.ts
+osrm-data/
+web/dist/

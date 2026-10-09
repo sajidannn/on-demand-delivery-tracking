@@ -3,7 +3,9 @@ import { MessagePattern, Payload } from '@nestjs/microservices';
 import { OrderServiceService } from './order-service.service.js';
 import {
   CreateOrderPayloadDto,
+  EstimateOrderDto,
   OrderDto,
+  OrderEstimateDto,
   Role,
   UpdateOrderStatusPayloadDto,
   PATTERNS,
@@ -38,5 +40,12 @@ export class OrderServiceController {
     @Payload() data: UpdateOrderStatusPayloadDto,
   ): Promise<OrderDto> {
     return this.orderServiceService.updateStatus(data);
+  }
+
+  @MessagePattern(PATTERNS.ORDER.ESTIMATE)
+  async estimateOrder(
+    @Payload() data: EstimateOrderDto,
+  ): Promise<OrderEstimateDto> {
+    return this.orderServiceService.estimate(data);
   }
 }

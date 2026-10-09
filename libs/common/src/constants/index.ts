@@ -21,6 +21,7 @@ export const PATTERNS = {
     GET: 'order.get',
     LIST: 'order.list',
     UPDATE_STATUS: 'order.update_status',
+    ESTIMATE: 'order.estimate',
   },
 };
 

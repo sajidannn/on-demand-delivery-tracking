@@ -24,5 +24,6 @@
       "@app/common/*": ["./libs/common/src/*"]
     }
   },
-  "include": ["apps/**/*", "libs/**/*"]
+  "include": ["apps/**/*", "libs/**/*"],
+  "exclude": ["web"]
 }

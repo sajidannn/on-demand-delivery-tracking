@@ -52,10 +52,12 @@ describe('TrackingGateway + Socket.IO sungguhan', () => {
   }
 
   beforeAll(async () => {
+    process.env.CORS_ORIGINS = 'http://localhost:5173';
+    process.env.AUTH_COOKIE_NAME = 'access_token';
     gateway.server = io;
     io.on('connection', (s) => {
       void gateway.handleConnection(s).then(() => {
-        if (s.data.user) serverSide.set(s.data.user.userId, s);
+        if (s.data?.user) serverSide.set(s.data.user.userId, s);
       });
     });
     await new Promise<void>((r) => http.listen(0, () => r()));
@@ -117,6 +119,42 @@ describe('TrackingGateway + Socket.IO sungguhan', () => {
     const reason = await new Promise<string>((res) =>
       c.once('disconnect', (r) => res(r)),
     );
+    expect(reason).toBe('io server disconnect');
+  });
+
+  it('connects with valid cookie and registered origin', async () => {
+    const c = connect(`http://localhost:${port}`, {
+      extraHeaders: {
+        cookie: 'access_token=cust',
+        origin: 'http://localhost:5173',
+      },
+      reconnection: false,
+    });
+    clients.push(c);
+    await new Promise<void>((res) => c.once('connect', () => res()));
+    await wait(100);
+    expect(c.connected).toBe(true);
+  });
+
+  it('disconnects if valid cookie but unregistered origin', async () => {
+    const c = connect(`http://localhost:${port}`, {
+      extraHeaders: {
+        cookie: 'access_token=cust',
+        origin: 'http://evil.com',
+      },
+      reconnection: false,
+    });
+    clients.push(c);
+    const reason = await new Promise<string>((res) => c.once('disconnect', (r) => res(r)));
+    expect(reason).toBe('io server disconnect');
+  });
+
+  it('disconnects if no token and no cookie', async () => {
+    const c = connect(`http://localhost:${port}`, {
+      reconnection: false,
+    });
+    clients.push(c);
+    const reason = await new Promise<string>((res) => c.once('disconnect', (r) => res(r)));
     expect(reason).toBe('io server disconnect');
   });
 });

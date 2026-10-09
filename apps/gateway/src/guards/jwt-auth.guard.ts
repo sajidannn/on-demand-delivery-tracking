@@ -5,10 +5,13 @@ import {
   Injectable,
   ServiceUnavailableException,
   UnauthorizedException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
 import { AUTH_SERVICE_TOKEN, PATTERNS, callService } from '@app/common';
+import { extractToken } from '../session/token-source.js';
+import { Request } from 'express';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
@@ -17,16 +20,19 @@ export class JwtAuthGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context
-      .switchToHttp()
-      .getRequest<{ headers: Record<string, string>; user: unknown }>();
-    const authHeader = request.headers['authorization'];
+    const request = context.switchToHttp().getRequest<Request & { user: unknown }>();
+    const foundToken = extractToken(request);
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (!foundToken) {
       throw new UnauthorizedException('Token tidak ditemukan');
     }
 
-    const token = authHeader.split(' ')[1];
+    const { token, source } = foundToken;
+
+    const unsafe = !['GET', 'HEAD', 'OPTIONS'].includes(request.method);
+    if (source === 'cookie' && unsafe && request.headers['x-requested-with'] !== 'XMLHttpRequest') {
+      throw new ForbiddenException({ code: 'CSRF_HEADER_REQUIRED', message: 'Header X-Requested-With wajib' });
+    }
 
     try {
       request.user = await firstValueFrom(

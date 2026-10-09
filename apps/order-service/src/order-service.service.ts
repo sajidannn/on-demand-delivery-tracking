@@ -8,12 +8,17 @@ import {
   OrderDto,
   OrderStatus,
   Role,
+  RouteSource,
   UpdateOrderStatusPayloadDto,
   callService,
+  EstimateOrderDto,
+  OrderEstimateDto,
 } from '@app/common';
 import { OrderRepository, OrderRow } from './order.repository.js';
 import { OrderStateMachine } from './order-state-machine.service.js';
 import { OrderEventsPublisher } from './order-events.publisher.js';
+import { RoutingService } from './routing/routing.service.js';
+import { calculateFee } from './routing/fee-calculator.js';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
 import { Metadata } from '@grpc/grpc-js';
@@ -29,6 +34,7 @@ export class OrderServiceService implements OnModuleInit {
     private readonly stateMachine: OrderStateMachine,
     private readonly configService: ConfigService,
     private readonly publisher: OrderEventsPublisher,
+    private readonly routingService: RoutingService,
   ) {}
 
   onModuleInit() {
@@ -45,6 +51,9 @@ export class OrderServiceService implements OnModuleInit {
       status: row.status,
       distanceM: row.distance_m,
       fee: row.fee,
+      routeSource: row.route_source,
+      route: row.route || undefined,
+      durationS: row.duration_s || undefined,
       pickup: { lat: row.pickup_lat, lng: row.pickup_lng },
       dropoff: { lat: row.dropoff_lat, lng: row.dropoff_lng },
       createdAt: row.created_at,
@@ -66,13 +75,64 @@ export class OrderServiceService implements OnModuleInit {
     }
   }
 
+  async estimate(payload: EstimateOrderDto): Promise<OrderEstimateDto> {
+    const estimate = await this.routingService.getRouteEstimate(payload.pickup, payload.dropoff);
+    
+    if (estimate.distanceM < 50) {
+      throw new RpcException({
+        code: 'VALIDATION_ERROR',
+        message: 'Jarak minimum adalah 50 meter',
+      });
+    }
+
+    const feeConfig = {
+      base: Number(this.configService.get('FEE_BASE', 5000)),
+      perKm: Number(this.configService.get('FEE_PER_KM', 2500)),
+      min: Number(this.configService.get('FEE_MIN', 10000)),
+      round: Number(this.configService.get('FEE_ROUND', 500)),
+    };
+
+    const fee = calculateFee(estimate.distanceM, feeConfig);
+
+    return {
+      distanceM: estimate.distanceM,
+      durationS: estimate.durationS || undefined,
+      fee,
+      routeSource: estimate.routeSource,
+      route: estimate.route || undefined,
+    };
+  }
+
   async create(payload: CreateOrderPayloadDto): Promise<OrderDto> {
+    const estimate = await this.routingService.getRouteEstimate(payload.pickup, payload.dropoff);
+    
+    if (estimate.distanceM < 50) {
+      throw new RpcException({
+        code: 'VALIDATION_ERROR',
+        message: 'Jarak minimum adalah 50 meter',
+      });
+    }
+
+    const feeConfig = {
+      base: Number(this.configService.get('FEE_BASE', 5000)),
+      perKm: Number(this.configService.get('FEE_PER_KM', 2500)),
+      min: Number(this.configService.get('FEE_MIN', 10000)),
+      round: Number(this.configService.get('FEE_ROUND', 500)),
+    };
+    
+    const fee = calculateFee(estimate.distanceM, feeConfig);
+
     const orderRow = await this.orderRepository.createOrder(
       payload.customerId,
       payload.pickup.lat,
       payload.pickup.lng,
       payload.dropoff.lat,
       payload.dropoff.lng,
+      estimate.distanceM,
+      fee,
+      estimate.routeSource,
+      estimate.route,
+      estimate.durationS,
     );
     this.logger.log(
       `Order created: ${orderRow.id} for customer ${payload.customerId}`,

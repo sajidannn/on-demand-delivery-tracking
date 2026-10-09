@@ -13,3 +13,7 @@ export * from './utils/call-service.util.js';
 export * from './utils/rmq.util.js';
 export * from './dto/driver-location-ws.dto.js';
 export * from './dto/order-subscribe.dto.js';
+export * from './enums/route-source.enum.js';
+export * from './dto/route-geometry.dto.js';
+export * from './dto/estimate-order.dto.js';
+export * from './dto/order-estimate.dto.js';

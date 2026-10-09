@@ -123,6 +123,12 @@ describe('E2E alur order penuh', () => {
       token: customer.token,
       body: { pickup, dropoff },
     });
+  const estimateOrder = () =>
+    api<{ distanceM: number; fee: number; routeSource: string; route?: any }>('/orders/estimate', {
+      method: 'POST',
+      token: customer.token,
+      body: { pickup, dropoff },
+    });
   const setStatus = (orderId: string, token: string, status: OrderStatus) =>
     api<OrderBody>(`/orders/${orderId}/status`, {
       method: 'PATCH',
@@ -191,13 +197,20 @@ describe('E2E alur order penuh', () => {
     }
   });
 
-  it('AC-02/03: order pertama di-assign ke driver terdekat', async () => {
+  it('AC-02/03: order pertama di-assign ke driver terdekat, fee sesuai', async () => {
+    // Cek estimasi dulu
+    const est = await estimateOrder();
+    expect(est.status).toBe(200);
+    expect(est.body.distanceM).toBeGreaterThan(0);
+    expect(est.body.fee).toBeGreaterThan(0);
+    expect(['OSRM', 'STRAIGHT_LINE']).toContain(est.body.routeSource);
+
     const res = await createOrder();
     expect(res.status).toBe(201);
     expect(res.body.status).toBe(OrderStatus.DRIVER_ASSIGNED);
     expect(res.body.driverId).toBe(drivers[0].id);
-    expect(res.body.distanceM).toBeGreaterThan(0);
-    expect(res.body.fee).toBeGreaterThan(0);
+    expect(res.body.distanceM).toBe(est.body.distanceM);
+    expect(res.body.fee).toBe(est.body.fee);
     orders.push({ id: res.body.id, driver: drivers[0] });
   });
 

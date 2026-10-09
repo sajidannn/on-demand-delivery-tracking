@@ -9,6 +9,8 @@ import {
   Inject,
   Req,
   ParseUUIDPipe,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -29,6 +31,9 @@ import {
   ErrorResponseDto,
   PATTERNS,
   callService,
+  EstimateOrderDto,
+  OrderEstimateDto,
+  RouteSource,
 } from '@app/common';
 import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
 import { RolesGuard } from './guards/roles.guard.js';
@@ -84,6 +89,38 @@ export class OrderController {
     return firstValueFrom(
       callService(
         this.orderClient.send<OrderDto>(PATTERNS.ORDER.CREATE, payload),
+        'order-service',
+        5000,
+      ),
+    );
+  }
+
+  @Post('estimate')
+  @HttpCode(HttpStatus.OK)
+  @Roles(Role.CUSTOMER)
+  @ApiOperation({ summary: 'Estimasi pesanan (jarak, waktu, biaya)' })
+  @ApiResponse({
+    status: 200,
+    description: 'Estimasi berhasil dihitung',
+    type: OrderEstimateDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Payload tidak valid',
+    type: ErrorResponseDto,
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Token tidak valid (UNAUTHORIZED)',
+    type: ErrorResponseDto,
+  })
+  async estimateOrder(
+    @Req() req: AuthenticatedRequest,
+    @Body() body: EstimateOrderDto,
+  ): Promise<OrderEstimateDto> {
+    return firstValueFrom(
+      callService(
+        this.orderClient.send<OrderEstimateDto>(PATTERNS.ORDER.ESTIMATE, body),
         'order-service',
         5000,
       ),

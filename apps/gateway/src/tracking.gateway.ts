@@ -33,7 +33,7 @@ import {
   OrderStatusPayload,
 } from '@app/common';
 
-@WebSocketGateway({ cors: { origin: '*' } })
+@WebSocketGateway()
 @UsePipes(
   new ValidationPipe({
     whitelist: true,
@@ -60,11 +60,38 @@ export class TrackingGateway implements OnGatewayConnection, OnGatewayDisconnect
   ) {}
 
   async handleConnection(client: Socket) {
-    const token = client.handshake.auth?.token;
+    let token =
+      client.handshake.auth?.token ||
+      (client.handshake.headers?.authorization || '').split(' ')[1];
+    let isCookie = false;
+
+    if (!token) {
+      const cookieHeader = client.handshake.headers?.cookie;
+      if (cookieHeader) {
+        const cookies = cookieHeader.split(';').reduce((acc, cookieString) => {
+          const [key, ...val] = cookieString.trim().split('=');
+          if (key) acc[key] = val.join('=');
+          return acc;
+        }, {} as Record<string, string>);
+        const cookieName = process.env.AUTH_COOKIE_NAME || 'access_token';
+        token = cookies[cookieName];
+        isCookie = !!token;
+      }
+    }
 
     if (!token) {
       client.disconnect(true);
       return;
+    }
+
+    if (isCookie) {
+      const origin = client.handshake.headers?.origin;
+      const rawOrigins = process.env.CORS_ORIGINS ?? '';
+      const corsOrigins = rawOrigins.split(',').map((o) => o.trim());
+      if (!origin || !corsOrigins.includes(origin)) {
+        client.disconnect(true);
+        return;
+      }
     }
 
     try {

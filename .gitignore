@@ -63,3 +63,6 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
 files.txt
 repo.zip
+osrm-data/
+web/node_modules/
+web/dist/

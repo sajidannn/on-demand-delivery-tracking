@@ -4,7 +4,8 @@ import { OrderRepository } from './order.repository.js';
 import { OrderStateMachine } from './order-state-machine.service.js';
 import { OrderEventsPublisher } from './order-events.publisher.js';
 import { ConfigService } from '@nestjs/config';
-import { LOCATION_SERVICE_NAME, OrderStatus, Role } from '@app/common';
+import { LOCATION_SERVICE_NAME, OrderStatus, Role, RouteSource } from '@app/common';
+import { RoutingService } from './routing/routing.service.js';
 import { RpcException } from '@nestjs/microservices';
 import { of, throwError } from 'rxjs';
 
@@ -14,6 +15,7 @@ describe('OrderServiceService', () => {
   let stateMachine: Record<string, ReturnType<typeof vi.fn>>;
   let locationServiceMock: Record<string, ReturnType<typeof vi.fn>>;
   let publisherMock: Record<string, ReturnType<typeof vi.fn>>;
+  let routingServiceMock: Record<string, ReturnType<typeof vi.fn>>;
 
   beforeEach(async () => {
     repo = {
@@ -40,12 +42,22 @@ describe('OrderServiceService', () => {
       statusChanged: vi.fn().mockResolvedValue(undefined),
     };
 
+    routingServiceMock = {
+      getRouteEstimate: vi.fn().mockResolvedValue({
+        distanceM: 2000,
+        durationS: 300,
+        routeSource: RouteSource.OSRM,
+        route: null,
+      }),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         OrderServiceService,
         { provide: OrderRepository, useValue: repo },
         { provide: OrderStateMachine, useValue: stateMachine },
         { provide: OrderEventsPublisher, useValue: publisherMock },
+        { provide: RoutingService, useValue: routingServiceMock },
         {
           provide: ConfigService,
           useValue: { get: vi.fn().mockReturnValue(3000) },

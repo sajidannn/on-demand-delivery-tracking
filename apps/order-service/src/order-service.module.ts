@@ -11,6 +11,8 @@ import { OrderServiceService } from './order-service.service.js';
 import { OrderRepository } from './order.repository.js';
 import { OrderStateMachine } from './order-state-machine.service.js';
 import { OrderEventsPublisher } from './order-events.publisher.js';
+import { RoutingService } from './routing/routing.service.js';
+import { OsrmClient } from './routing/osrm.client.js';
 import {
   NOTIFICATION_CLIENT_TOKEN,
   GATEWAY_CLIENT_TOKEN,
@@ -80,6 +82,8 @@ const locationProtoPath = existsSync(distProtoPath)
     OrderRepository,
     OrderStateMachine,
     OrderEventsPublisher,
+    RoutingService,
+    OsrmClient,
   ],
 })
 export class OrderServiceModule {}

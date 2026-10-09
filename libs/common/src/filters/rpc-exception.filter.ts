@@ -48,18 +48,19 @@ export class RpcExceptionToHttpFilter implements ExceptionFilter {
       const status = exception.getStatus();
       const body = exception.getResponse();
 
-      // Ambil pesan: bisa string tunggal, array (class-validator), atau objek
+      let code = HTTP_STATUS_TO_CODE[status] ?? 'INTERNAL';
       let message: string | string[];
       if (typeof body === 'string') {
         message = body;
       } else {
-        const b = body as { message?: string | string[] };
+        const b = body as { message?: string | string[], code?: string };
         message = b.message ?? exception.message;
+        if (b.code) code = b.code;
       }
 
       return response.status(status).json({
         statusCode: status,
-        code: HTTP_STATUS_TO_CODE[status] ?? 'INTERNAL',
+        code,
         message,
       });
     }

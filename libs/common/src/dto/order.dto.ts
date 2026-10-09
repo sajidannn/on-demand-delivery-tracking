@@ -10,6 +10,8 @@ import {
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { OrderStatus } from '../enums/order-status.enum.js';
+import { RouteSource } from '../enums/route-source.enum.js';
+import { RouteGeometryDto } from './route-geometry.dto.js';
 
 export class CoordinateDto {
   @ApiProperty({ example: -6.9147 })
@@ -89,6 +91,15 @@ export class OrderDto {
 
   @ApiProperty({ example: 10000 })
   fee: number;
+
+  @ApiPropertyOptional({ example: 312 })
+  durationS?: number;
+
+  @ApiProperty({ enum: RouteSource, example: RouteSource.STRAIGHT_LINE })
+  routeSource: RouteSource;
+
+  @ApiPropertyOptional({ type: RouteGeometryDto })
+  route?: RouteGeometryDto;
 
   @ApiProperty({ example: '2026-10-01T12:00:00Z' })
   createdAt: Date;

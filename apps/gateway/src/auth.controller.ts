@@ -1,5 +1,6 @@
 import {
   Req,
+  Res,
   UseGuards,
   Body,
   Controller,
@@ -16,6 +17,7 @@ import {
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
+  ApiBody,
 } from '@nestjs/swagger';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
@@ -29,6 +31,8 @@ import {
   ErrorResponseDto,
   callService,
 } from '@app/common';
+import type { Response } from 'express';
+import { setAuthCookie, clearAuthCookie } from './session/auth-cookie.js';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -81,14 +85,31 @@ export class AuthController {
     description: 'Kredensial tidak valid (UNAUTHORIZED)',
     type: ErrorResponseDto,
   })
-  async login(@Body() data: LoginDto): Promise<TokenResponseDto> {
-    return firstValueFrom(
+  async login(
+    @Body() data: LoginDto,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<TokenResponseDto> {
+    const result = await firstValueFrom(
       callService(
         this.authClient.send<TokenResponseDto>(PATTERNS.AUTH.LOGIN, data),
         'auth-service',
         5000,
       ),
     );
+    setAuthCookie(res, result.accessToken);
+    return result;
+  }
+
+  @Post('logout')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Logout (menghapus session cookie)' })
+  @ApiResponse({
+    status: 204,
+    description: 'Berhasil logout',
+  })
+  @ApiBody({ schema: {} })
+  async logout(@Res({ passthrough: true }) res: Response): Promise<void> {
+    clearAuthCookie(res);
   }
 
   @UseGuards(JwtAuthGuard)

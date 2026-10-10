@@ -58,7 +58,7 @@ pids
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
-#p Prisma Generated Object
+# #Prisma Generated Object
 /apps/auth-service/src/generated
 
 files.txt
@@ -66,3 +66,13 @@ repo.zip
 osrm-data/
 web/node_modules/
 web/dist/
+
+# Agent Web
+/.agents
+/.agent
+/.claude
+/.gemini
+/.codex
+/.impeccable
+DESIGN.md
+skills-lock.json

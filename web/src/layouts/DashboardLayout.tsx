@@ -1,14 +1,12 @@
-import { Outlet, useNavigate } from "react-router-dom";
+import { Outlet, useNavigate, Link, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 
 export default function DashboardLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
-  const handleLogout = async () => {
-    await logout();
-    navigate("/login");
-  };
+
 
   return (
     <div className="min-h-screen bg-surface flex flex-col font-sans">
@@ -20,16 +18,37 @@ export default function DashboardLayout() {
                 UrbanLogis
               </span>
             </div>
-            <div className="flex items-center space-x-4">
-              <span className="text-[14px] font-medium text-on-surface">
-                {user?.name}
-              </span>
-              <button
-                onClick={handleLogout}
-                className="text-[12px] font-bold text-error hover:bg-error-container hover:text-on-error-container px-4 py-2 rounded-full transition-colors"
+            <div className="flex items-center space-x-1 sm:space-x-4">
+              <Link
+                to={user?.role === "DRIVER" ? "/driver" : "/customer"}
+                className={`text-[14px] font-bold px-3 py-2 rounded-full transition-colors ${
+                  location.pathname === "/driver" || location.pathname === "/customer"
+                    ? "bg-primary-container text-on-primary-container"
+                    : "text-on-surface hover:bg-surface-container-low"
+                }`}
               >
-                Keluar
-              </button>
+                Beranda
+              </Link>
+              <Link
+                to={user?.role === "DRIVER" ? "/driver/history" : "/customer/history"}
+                className={`text-[14px] font-bold px-3 py-2 rounded-full transition-colors ${
+                  location.pathname.includes("/history")
+                    ? "bg-primary-container text-on-primary-container"
+                    : "text-on-surface hover:bg-surface-container-low"
+                }`}
+              >
+                Riwayat
+              </Link>
+              <Link
+                to={user?.role === "DRIVER" ? "/driver/profile" : "/customer/profile"}
+                className={`text-[14px] font-bold px-3 py-2 rounded-full transition-colors ${
+                  location.pathname.includes("/profile")
+                    ? "bg-primary-container text-on-primary-container"
+                    : "text-on-surface hover:bg-surface-container-low"
+                }`}
+              >
+                Profil
+              </Link>
             </div>
           </div>
         </div>

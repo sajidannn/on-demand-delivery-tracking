@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { apiClient } from "../../lib/api/client";
 import { useAuth } from "../../contexts/AuthContext";
 
-type OrderStatus = "DRIVER_ASSIGNED" | "PICKED_UP" | "COMPLETED";
 
 export default function DriverDashboard() {
   const { user } = useAuth();

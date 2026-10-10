@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { MapContainer, TileLayer, Marker, useMapEvents, Polyline } from "react-leaflet";
 import { apiClient } from "../../lib/api/client";
-import { useAuth } from "../../contexts/AuthContext";
 
 type LatLng = { lat: number; lng: number };
 
@@ -163,7 +162,7 @@ export default function CustomerDashboard() {
           <div className="space-y-3 mb-5">
             <div className="flex items-center gap-3">
               <div className="w-4 h-4 rounded-full border-2 border-primary-container bg-surface-container-lowest shrink-0" />
-              <div className="flex-1 h-[48px] px-4 bg-surface-container-low border border-surface-container-highest rounded-[20px] flex items-center">
+              <div className="flex-1 h-12 px-4 bg-surface-container-low border border-surface-container-highest rounded-[20px] flex items-center">
                 <span className={`text-[14px] truncate ${pickup ? 'text-on-surface' : 'text-on-surface-variant/50'}`}>
                   {pickup ? `${pickup.lat.toFixed(5)}, ${pickup.lng.toFixed(5)}` : "Pilih Penjemputan..."}
                 </span>

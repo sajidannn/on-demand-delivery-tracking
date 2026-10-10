@@ -7,6 +7,9 @@ import DashboardLayout from "./layouts/DashboardLayout";
 import CustomerDashboard from "./pages/customer/CustomerDashboard";
 import OrderTracking from "./pages/customer/OrderTracking";
 import DriverDashboard from "./pages/driver/DriverDashboard";
+import CustomerHistory from "./pages/customer/CustomerHistory";
+import DriverHistory from "./pages/driver/DriverHistory";
+import Profile from "./pages/Profile";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -65,6 +68,8 @@ export default function App() {
                   <ProtectedRoute allowedRole="CUSTOMER">
                     <Routes>
                       <Route path="/" element={<CustomerDashboard />} />
+                      <Route path="/history" element={<CustomerHistory />} />
+                      <Route path="/profile" element={<Profile />} />
                       <Route path="/track/:orderId" element={<OrderTracking />} />
                     </Routes>
                   </ProtectedRoute>
@@ -74,7 +79,11 @@ export default function App() {
                 path="/driver/*" 
                 element={
                   <ProtectedRoute allowedRole="DRIVER">
-                    <DriverDashboard />
+                    <Routes>
+                      <Route path="/" element={<DriverDashboard />} />
+                      <Route path="/history" element={<DriverHistory />} />
+                      <Route path="/profile" element={<Profile />} />
+                    </Routes>
                   </ProtectedRoute>
                 } 
               />

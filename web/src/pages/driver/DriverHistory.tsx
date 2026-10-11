@@ -1,11 +1,16 @@
 import { useEffect, useState } from "react";
 import { apiClient } from "../../lib/api/client";
+import { getAddressFromCoordinates } from "../../lib/geo";
 
 type Order = {
   id: string;
   status: string;
-  estimatedPrice: number;
-  estimatedDistance: number;
+  fee: number;
+  distanceM: number;
+  pickup: { lat: number; lng: number };
+  dropoff: { lat: number; lng: number };
+  pickupAddress?: string;
+  dropoffAddress?: string;
   createdAt: string;
 };
 
@@ -27,7 +32,17 @@ export default function DriverHistory() {
         const sorted = completedOrders.sort(
           (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         );
-        setOrders(sorted as unknown as Order[]);
+        
+        // Fetch addresses
+        const ordersWithAddresses = await Promise.all(
+          sorted.map(async (order: any) => {
+            const pickupAddress = await getAddressFromCoordinates(order.pickup.lat, order.pickup.lng);
+            const dropoffAddress = await getAddressFromCoordinates(order.dropoff.lat, order.dropoff.lng);
+            return { ...order, pickupAddress, dropoffAddress };
+          })
+        );
+
+        setOrders(ordersWithAddresses as unknown as Order[]);
       } catch (err: any) {
         setError(String(err.message || "Gagal memuat riwayat pesanan"));
       } finally {
@@ -78,11 +93,23 @@ export default function DriverHistory() {
               </div>
               
               <div className="mb-2">
-                <div className="text-[18px] font-bold text-on-surface">
-                  Pendapatan: Rp {order.estimatedPrice?.toLocaleString("id-ID") ?? 0}
+                <div className="text-[18px] font-bold text-on-surface mb-2">
+                  Pendapatan: Rp {order.fee?.toLocaleString("id-ID") ?? 0}
                 </div>
+                
+                <div className="space-y-1 mb-3">
+                  <div className="flex items-start gap-2">
+                    <div className="w-2 h-2 rounded-full border border-primary-container bg-surface-container-lowest mt-1.5 shrink-0" />
+                    <span className="text-[12px] text-on-surface truncate">{order.pickupAddress || `${order.pickup.lat.toFixed(4)}, ${order.pickup.lng.toFixed(4)}`}</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <div className="w-2 h-2 rounded-full bg-error mt-1.5 shrink-0" />
+                    <span className="text-[12px] text-on-surface truncate">{order.dropoffAddress || `${order.dropoff.lat.toFixed(4)}, ${order.dropoff.lng.toFixed(4)}`}</span>
+                  </div>
+                </div>
+
                 <div className="text-[14px] text-on-surface-variant mt-1">
-                  Jarak tempuh: {((order.estimatedDistance || 0) / 1000).toFixed(1)} km
+                  Jarak tempuh: {((order.distanceM || 0) / 1000).toFixed(1)} km
                 </div>
               </div>
               

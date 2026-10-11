@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { MapContainer, TileLayer, Marker, useMapEvents, Polyline } from "react-leaflet";
 import { apiClient } from "../../lib/api/client";
+import { getAddressFromCoordinates } from "../../lib/geo";
 
 type LatLng = { lat: number; lng: number };
 
@@ -23,16 +24,41 @@ export default function CustomerDashboard() {
   const [isEstimating, setIsEstimating] = useState(false);
   const [isOrdering, setIsOrdering] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pickupAddress, setPickupAddress] = useState<string>("");
+  const [dropoffAddress, setDropoffAddress] = useState<string>("");
 
-  const handleMapClick = (latlng: LatLng) => {
+  const handleMapClick = async (latlng: LatLng) => {
     if (!pickup || (pickup && dropoff)) {
       setPickup(latlng);
       setDropoff(null);
       setEstimate(null);
       setError(null);
+      setPickupAddress("Mencari alamat...");
+      setDropoffAddress("");
+      const addr = await getAddressFromCoordinates(latlng.lat, latlng.lng);
+      setPickupAddress(addr);
     } else {
       setDropoff(latlng);
+      setDropoffAddress("Mencari alamat...");
+      const addr = await getAddressFromCoordinates(latlng.lat, latlng.lng);
+      setDropoffAddress(addr);
     }
+  };
+
+  const handleUseGPS = () => {
+    if (!navigator.geolocation) {
+      alert("Browser tidak mendukung GPS");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(async (position) => {
+      const latlng = { lat: position.coords.latitude, lng: position.coords.longitude };
+      setPickup(latlng);
+      setPickupAddress("Mencari alamat GPS...");
+      const addr = await getAddressFromCoordinates(latlng.lat, latlng.lng);
+      setPickupAddress(addr);
+    }, (err) => {
+      alert("Gagal mengambil GPS: " + err.message);
+    });
   };
 
   useEffect(() => {
@@ -146,17 +172,28 @@ export default function CustomerDashboard() {
       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-md z-10">
         <div className="bg-surface-container-lowest rounded-[24px] shadow-level-3 p-5 sm:p-6 border border-surface-container">
           
-          <div className="mb-4">
-            <h2 className="text-[20px] font-bold text-on-surface tracking-[-0.02em]">
-              Mau kirim kemana hari ini?
-            </h2>
-            <p className="text-[14px] text-on-surface-variant mt-1">
-              {!pickup 
-                ? "Tap peta untuk memilih lokasi penjemputan" 
-                : !dropoff 
-                ? "Tap peta untuk memilih lokasi tujuan" 
-                : "Lokasi sudah dipilih"}
-            </p>
+          <div className="flex justify-between items-start mb-4">
+            <div>
+              <h2 className="text-[20px] font-bold text-on-surface tracking-[-0.02em]">
+                Mau kirim kemana hari ini?
+              </h2>
+              <p className="text-[14px] text-on-surface-variant mt-1">
+                {!pickup 
+                  ? "Tap peta untuk memilih lokasi penjemputan" 
+                  : !dropoff 
+                  ? "Tap peta untuk memilih lokasi tujuan" 
+                  : "Lokasi sudah dipilih"}
+              </p>
+            </div>
+            {!pickup && (
+              <button 
+                onClick={handleUseGPS}
+                className="bg-primary-container text-on-primary-container px-3 py-2 text-[12px] font-bold rounded-full shadow-level-1 hover:bg-primary-container/80 transition-all"
+                title="Gunakan GPS Saat Ini"
+              >
+                📍 GPS Saya
+              </button>
+            )}
           </div>
 
           <div className="space-y-3 mb-5">
@@ -164,7 +201,7 @@ export default function CustomerDashboard() {
               <div className="w-4 h-4 rounded-full border-2 border-primary-container bg-surface-container-lowest shrink-0" />
               <div className="flex-1 h-12 px-4 bg-surface-container-low border border-surface-container-highest rounded-[20px] flex items-center">
                 <span className={`text-[14px] truncate ${pickup ? 'text-on-surface' : 'text-on-surface-variant/50'}`}>
-                  {pickup ? `${pickup.lat.toFixed(5)}, ${pickup.lng.toFixed(5)}` : "Pilih Penjemputan..."}
+                  {pickupAddress || (pickup ? `${pickup.lat.toFixed(5)}, ${pickup.lng.toFixed(5)}` : "Pilih Penjemputan...")}
                 </span>
               </div>
             </div>
@@ -173,7 +210,7 @@ export default function CustomerDashboard() {
               <div className="w-4 h-4 rounded-full bg-error shrink-0" />
               <div className="flex-1 h-12 px-4 bg-surface-container-low border border-surface-container-highest rounded-[20px] flex items-center">
                 <span className={`text-[14px] truncate ${dropoff ? 'text-on-surface' : 'text-on-surface-variant/50'}`}>
-                  {dropoff ? `${dropoff.lat.toFixed(5)}, ${dropoff.lng.toFixed(5)}` : "Pilih Tujuan..."}
+                  {dropoffAddress || (dropoff ? `${dropoff.lat.toFixed(5)}, ${dropoff.lng.toFixed(5)}` : "Pilih Tujuan...")}
                 </span>
               </div>
             </div>

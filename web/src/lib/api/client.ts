@@ -1,7 +1,7 @@
 import createClient from "openapi-fetch";
 import type { paths } from "./schema.d.ts";
 
-export const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+export const API_URL = import.meta.env.VITE_API_URL || "/api";
 
 export const apiClient = createClient<paths>({
   baseUrl: API_URL,
@@ -12,6 +12,7 @@ export const apiClient = createClient<paths>({
 apiClient.use({
   onRequest({ request }) {
     request.headers.set("X-Requested-With", "XMLHttpRequest");
+    request.headers.set("ngrok-skip-browser-warning", "true");
     return request;
   },
   onResponse({ response }) {

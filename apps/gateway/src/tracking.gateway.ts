@@ -123,6 +123,7 @@ export class TrackingGateway implements OnGatewayConnection, OnGatewayDisconnect
   ) {
     const user = client.data.user;
     if (!user || user.role !== Role.DRIVER) {
+      this.logger.error(`handleDriverLocation: User not found or not driver`);
       throw new WsException({
         code: 'FORBIDDEN',
         message: 'Only drivers allowed',
@@ -130,6 +131,7 @@ export class TrackingGateway implements OnGatewayConnection, OnGatewayDisconnect
     }
 
     const driverId = user.userId;
+    this.logger.debug(`[driver:location] Received from driver ${driverId} for order ${dto.orderId}: ${dto.lat}, ${dto.lng}`);
 
     this.locationClient.emit(EVENTS.DRIVER.LOCATION_UPDATED, {
       driverId,
@@ -184,6 +186,7 @@ export class TrackingGateway implements OnGatewayConnection, OnGatewayDisconnect
     }
 
     if (!client.data.activeOrders.get(orderId)) {
+      this.logger.error(`forwardLocationToRoom: Order mismatch or not active for driver ${driverId}, order ${orderId}`);
       throw new WsException({
         code: 'FORBIDDEN',
         message: 'Order mismatch or not in active state',
@@ -230,6 +233,7 @@ export class TrackingGateway implements OnGatewayConnection, OnGatewayDisconnect
     }
 
     void client.join(orderRoom(dto.orderId));
+    this.logger.debug(`[order:subscribe] Customer ${user.userId} joined room ${orderRoom(dto.orderId)}`);
     return { ok: true, status: order.status, driverId: order.driverId };
   }
 

@@ -1,15 +1,22 @@
-import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { MapContainer, TileLayer, Marker, Polyline } from "react-leaflet";
-import { io, Socket } from "socket.io-client";
-import { apiClient } from "../../lib/api/client";
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { MapContainer, TileLayer, Marker, Polyline } from 'react-leaflet';
+import { io, Socket } from 'socket.io-client';
+import { apiClient } from '../../lib/api/client';
+import { fetchOSRMRoute, getAddressFromCoordinates } from '../../lib/geo';
 
 export default function CustomerTracking() {
   const { orderId } = useParams<{ orderId: string }>();
   const navigate = useNavigate();
   const [order, setOrder] = useState<any>(null);
-  const [driverLocation, setDriverLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [driverLocation, setDriverLocation] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [routePath, setRoutePath] = useState<[number, number][]>([]);
+  const [pickupAddress, setPickupAddress] = useState<string>('');
+  const [dropoffAddress, setDropoffAddress] = useState<string>('');
 
   useEffect(() => {
     if (!orderId) return;
@@ -17,42 +24,50 @@ export default function CustomerTracking() {
     // Fetch initial order details
     const fetchOrder = async () => {
       try {
-        const { data, error: apiError } = await apiClient.GET("/orders/{id}", {
+        const { data, error: apiError } = await apiClient.GET('/orders/{id}', {
           params: { path: { id: orderId } },
         });
         if (apiError) throw apiError;
         setOrder(data);
+        
+        if (data) {
+          getAddressFromCoordinates(data.pickup.lat, data.pickup.lng).then(setPickupAddress);
+          getAddressFromCoordinates(data.dropoff.lat, data.dropoff.lng).then(setDropoffAddress);
+        }
       } catch (err) {
-        setError("Gagal memuat detail pesanan");
+        setError('Gagal memuat detail pesanan');
       }
     };
     fetchOrder();
 
     // Connect WebSocket
     // Since we use HttpOnly cookies, we rely on withCredentials
-    const socketInstance = io(window.location.hostname === "localhost" ? "http://localhost:3000" : "/", {
-      withCredentials: true,
-      transports: ["websocket", "polling"],
-    });
+    const socketInstance = io(
+      window.location.hostname === 'localhost' ? 'http://localhost:3000' : '/',
+      {
+        withCredentials: true,
+        transports: ['websocket', 'polling'],
+      },
+    );
 
-    socketInstance.on("connect", () => {
-      console.log("WebSocket connected");
+    socketInstance.on('connect', () => {
+      console.log('WebSocket connected');
       // Subscribe to this order's updates
-      socketInstance.emit("order:subscribe", { orderId });
+      socketInstance.emit('order:subscribe', { orderId });
     });
 
-    socketInstance.on("order:status", (data) => {
-      console.log("Status update:", data);
-      setOrder((prev: any) => prev ? { ...prev, status: data.status } : null);
+    socketInstance.on('order:status', (data) => {
+      console.log('Status update:', data);
+      setOrder((prev: any) => (prev ? { ...prev, status: data.status } : null));
     });
 
-    socketInstance.on("order:location", (data) => {
-      console.log("Driver location update:", data);
+    socketInstance.on('order:location', (data) => {
+      console.log('Driver location update:', data);
       setDriverLocation({ lat: data.lat, lng: data.lng });
     });
 
-    socketInstance.on("exception", (err) => {
-      console.error("WS Exception:", err);
+    socketInstance.on('exception', (err) => {
+      console.error('WS Exception:', err);
     });
 
     // Store in ref or just let it close on unmount
@@ -61,14 +76,36 @@ export default function CustomerTracking() {
     };
   }, [orderId]);
 
+  // Update Route when driverLocation or status changes
+  useEffect(() => {
+    if (!order) return;
+    
+    const calculateRoute = async () => {
+      if (order.status === "PENDING") {
+        const path = await fetchOSRMRoute(order.pickup, order.dropoff);
+        setRoutePath(path);
+      } else if (order.status === "DRIVER_ASSIGNED" && driverLocation) {
+        const path = await fetchOSRMRoute(driverLocation, order.pickup);
+        setRoutePath(path);
+      } else if (order.status === "PICKED_UP" && driverLocation) {
+        const path = await fetchOSRMRoute(driverLocation, order.dropoff);
+        setRoutePath(path);
+      } else {
+        const path = await fetchOSRMRoute(order.pickup, order.dropoff);
+        setRoutePath(path);
+      }
+    };
+    calculateRoute();
+  }, [order, driverLocation]);
+
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center h-[calc(100vh-64px)] bg-surface">
         <div className="bg-error-container text-on-error-container p-6 rounded-[24px] max-w-md text-center">
           <h2 className="text-[20px] font-bold mb-2">Oops!</h2>
           <p>{error}</p>
-          <button 
-            onClick={() => navigate("/customer")}
+          <button
+            onClick={() => navigate('/customer')}
             className="mt-6 px-6 py-2 bg-on-error-container text-error-container rounded-full font-bold"
           >
             Kembali ke Beranda
@@ -79,7 +116,11 @@ export default function CustomerTracking() {
   }
 
   if (!order) {
-    return <div className="flex h-[calc(100vh-64px)] items-center justify-center">Memuat pesanan...</div>;
+    return (
+      <div className="flex h-[calc(100vh-64px)] items-center justify-center">
+        Memuat pesanan...
+      </div>
+    );
   }
 
   return (
@@ -94,35 +135,35 @@ export default function CustomerTracking() {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         />
-        
+
         {/* Pickup & Dropoff Markers */}
         <Marker position={[order.pickup.lat, order.pickup.lng]} />
         <Marker position={[order.dropoff.lat, order.dropoff.lng]} />
-        
+
         {/* Driver Marker */}
         {driverLocation && (
           <Marker position={[driverLocation.lat, driverLocation.lng]} />
         )}
-        
-        {/* Route Render */}
-        {order.route?.coordinates && (
+
+        {/* Dynamic Live Route */}
+        {routePath.length > 0 && (
           <>
             <Polyline 
-              positions={order.route.coordinates.map((coord: [number, number]) => [coord[1], coord[0]])} 
+              positions={routePath} 
               color="#004b1e" 
               weight={8}
               lineCap="round"
               lineJoin="round"
             />
             <Polyline 
-              positions={order.route.coordinates.map((coord: [number, number]) => [coord[1], coord[0]])} 
+              positions={routePath} 
               color="#22c55e" 
               weight={4}
               lineCap="round"
               lineJoin="round"
             />
             <Polyline 
-              positions={order.route.coordinates.map((coord: [number, number]) => [coord[1], coord[0]])} 
+              positions={routePath} 
               color="#ffffff" 
               weight={3}
               dashArray="6, 18"
@@ -155,21 +196,27 @@ export default function CustomerTracking() {
           <div className="space-y-2 mb-2 bg-surface-container-low p-4 rounded-[16px]">
             <div className="flex justify-between text-[14px]">
               <span className="text-on-surface-variant">Harga:</span>
-              <span className="font-bold text-on-surface">Rp{order.fee.toLocaleString("id-ID")}</span>
+              <span className="font-bold text-on-surface">
+                Rp{order.fee.toLocaleString('id-ID')}
+              </span>
             </div>
             <div className="flex justify-between text-[14px]">
               <span className="text-on-surface-variant">Jarak:</span>
-              <span className="font-bold text-on-surface">{(order.distanceM / 1000).toFixed(1)} km</span>
+              <span className="font-bold text-on-surface">
+                {(order.distanceM / 1000).toFixed(1)} km
+              </span>
             </div>
             <div className="flex justify-between text-[14px]">
               <span className="text-on-surface-variant">Driver:</span>
-              <span className="font-medium text-on-surface">{order.driverId ? "Sedang menuju lokasi" : "Mencari driver..."}</span>
+              <span className="font-medium text-on-surface">
+                {order.driverId ? 'Sedang menuju lokasi' : 'Mencari driver...'}
+              </span>
             </div>
           </div>
-          
-          {order.status === "COMPLETED" && (
-            <button 
-              onClick={() => navigate("/customer")}
+
+          {order.status === 'COMPLETED' && (
+            <button
+              onClick={() => navigate('/customer')}
               className="w-full mt-4 h-12 bg-primary-container text-[#052E16] text-[16px] font-bold rounded-full hover:bg-primary-container/90 transition-all"
             >
               Kembali ke Beranda

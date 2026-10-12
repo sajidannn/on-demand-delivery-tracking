@@ -309,6 +309,8 @@ export class OrderServiceService implements OnModuleInit {
       customerId: orderRow.customer_id,
       driverId: payload.driverId,
       status: payload.status,
+      fee: orderRow.fee,
+      distanceM: orderRow.distance_m,
     }).catch(e => this.logger.error('Failed to publish order.status_changed', e));
 
     return this.toOrderDto(updatedRow);

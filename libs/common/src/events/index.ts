@@ -23,6 +23,8 @@ export interface OrderStatusChangedEvent {
   customerId: string;
   driverId?: string;
   status: OrderStatus;
+  fee?: number;
+  distanceM?: number;
 }
 
 export interface OrderLocationPayload {

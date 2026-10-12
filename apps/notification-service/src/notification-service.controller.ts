@@ -1,6 +1,6 @@
 import { Controller, Logger } from '@nestjs/common';
 import { EventPattern, Payload } from '@nestjs/microservices';
-import { EVENTS } from '@app/common';
+import { EVENTS, OrderStatus } from '@app/common';
 import type {
   OrderCreatedEvent,
   OrderDriverAssignedEvent,
@@ -29,9 +29,13 @@ export class NotificationServiceController {
   }
 
   @EventPattern<string>(EVENTS.ORDER.STATUS_CHANGED)
-  handleStatusChanged(@Payload() data: OrderStatusChangedEvent) {
+  async handleStatusChanged(@Payload() data: OrderStatusChangedEvent) {
     for (const msg of this.svc.buildStatusChangedMessages(data)) {
       this.logger.log(JSON.stringify(msg));
+    }
+
+    if (data.status === OrderStatus.COMPLETED) {
+      await this.svc.sendCompletionEmails(data);
     }
   }
 }

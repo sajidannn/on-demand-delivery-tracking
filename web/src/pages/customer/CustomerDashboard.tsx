@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { MapContainer, TileLayer, Marker, useMapEvents, Polyline } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap, Polyline } from "react-leaflet";
 import { apiClient } from "../../lib/api/client";
 import { getAddressFromCoordinates } from "../../lib/geo";
+import { pickupIcon, dropoffIcon } from "../../lib/map-icons";
 
 type LatLng = { lat: number; lng: number };
 
@@ -12,6 +13,41 @@ function MapEvents({ onMapClick }: { onMapClick: (latlng: LatLng) => void }) {
       onMapClick(e.latlng);
     },
   });
+  return null;
+}
+
+function MapController({
+  focusLocation,
+  pickup,
+  dropoff,
+}: {
+  focusLocation: LatLng | null;
+  pickup: LatLng | null;
+  dropoff: LatLng | null;
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (focusLocation) {
+      map.flyTo([focusLocation.lat, focusLocation.lng], 16, {
+        animate: true,
+        duration: 1.0,
+      });
+    }
+  }, [map, focusLocation]);
+
+  useEffect(() => {
+    if (pickup && dropoff) {
+      map.fitBounds(
+        [
+          [pickup.lat, pickup.lng],
+          [dropoff.lat, dropoff.lng],
+        ],
+        { padding: [70, 70], maxZoom: 16, animate: true }
+      );
+    }
+  }, [map, pickup, dropoff]);
+
   return null;
 }
 
@@ -26,6 +62,8 @@ export default function CustomerDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [pickupAddress, setPickupAddress] = useState<string>("");
   const [dropoffAddress, setDropoffAddress] = useState<string>("");
+  const [focusLocation, setFocusLocation] = useState<LatLng | null>(null);
+  const [isLocating, setIsLocating] = useState(false);
 
   const handleMapClick = async (latlng: LatLng) => {
     if (!pickup || (pickup && dropoff)) {
@@ -50,15 +88,23 @@ export default function CustomerDashboard() {
       alert("Browser tidak mendukung GPS");
       return;
     }
-    navigator.geolocation.getCurrentPosition(async (position) => {
-      const latlng = { lat: position.coords.latitude, lng: position.coords.longitude };
-      setPickup(latlng);
-      setPickupAddress("Mencari alamat GPS...");
-      const addr = await getAddressFromCoordinates(latlng.lat, latlng.lng);
-      setPickupAddress(addr);
-    }, (err) => {
-      alert("Gagal mengambil GPS: " + err.message);
-    });
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        setIsLocating(false);
+        const latlng = { lat: position.coords.latitude, lng: position.coords.longitude };
+        setPickup(latlng);
+        setFocusLocation(latlng);
+        setPickupAddress("Mencari alamat GPS...");
+        const addr = await getAddressFromCoordinates(latlng.lat, latlng.lng);
+        setPickupAddress(addr);
+      },
+      (err) => {
+        setIsLocating(false);
+        alert("Gagal mengambil GPS: " + err.message);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
   };
 
   useEffect(() => {
@@ -123,9 +169,10 @@ export default function CustomerDashboard() {
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         />
         <MapEvents onMapClick={handleMapClick} />
+        <MapController focusLocation={focusLocation} pickup={pickup} dropoff={dropoff} />
         
-        {pickup && <Marker position={[pickup.lat, pickup.lng]} />}
-        {dropoff && <Marker position={[dropoff.lat, dropoff.lng]} />}
+        {pickup && <Marker position={[pickup.lat, pickup.lng]} icon={pickupIcon} />}
+        {dropoff && <Marker position={[dropoff.lat, dropoff.lng]} icon={dropoffIcon} />}
         
         {/* Render actual route from OSRM if available, otherwise fallback to straight line */}
         {pickup && dropoff && estimate?.route?.coordinates ? (
@@ -188,10 +235,20 @@ export default function CustomerDashboard() {
             {!pickup && (
               <button 
                 onClick={handleUseGPS}
-                className="bg-primary-container text-on-primary-container px-3 py-2 text-[12px] font-bold rounded-full shadow-level-1 hover:bg-primary-container/80 transition-all"
+                disabled={isLocating}
+                className="bg-primary-container text-on-primary-container px-3.5 py-2 text-[12px] font-bold rounded-full shadow-level-1 hover:bg-primary-container/80 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                 title="Gunakan GPS Saat Ini"
               >
-                📍 GPS Saya
+                {isLocating ? (
+                  <>
+                    <span className="inline-block w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin"></span>
+                    <span>Mencari GPS...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>📍</span> GPS Saya
+                  </>
+                )}
               </button>
             )}
           </div>

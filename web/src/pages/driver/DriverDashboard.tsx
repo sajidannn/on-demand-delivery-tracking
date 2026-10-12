@@ -1,9 +1,39 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { apiClient } from '../../lib/api/client';
-import { MapContainer, TileLayer, Marker, Polyline } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Polyline, useMap } from 'react-leaflet';
 import { useAuth } from '../../contexts/AuthContext';
 import { io, Socket } from 'socket.io-client';
 import { fetchOSRMRoute, getAddressFromCoordinates } from '../../lib/geo';
+import { driverIcon, pickupIcon, dropoffIcon } from '../../lib/map-icons';
+import { OrderStatusBadge } from '../../lib/order-status';
+
+function MapController({
+  driverLocation,
+}: {
+  driverLocation: { lat: number; lng: number } | null;
+}) {
+  const map = useMap();
+  const hasInitiallyCentered = useRef(false);
+
+  useEffect(() => {
+    if (!driverLocation) return;
+
+    if (!hasInitiallyCentered.current) {
+      hasInitiallyCentered.current = true;
+      map.flyTo([driverLocation.lat, driverLocation.lng], 16, {
+        animate: true,
+        duration: 1.2,
+      });
+    } else {
+      map.panTo([driverLocation.lat, driverLocation.lng], {
+        animate: true,
+        duration: 0.8,
+      });
+    }
+  }, [map, driverLocation?.lat, driverLocation?.lng]);
+
+  return null;
+}
 
 export default function DriverDashboard() {
   const { user } = useAuth();
@@ -16,6 +46,18 @@ export default function DriverDashboard() {
     lng: number;
   } | null>(null);
   const [routePath, setRoutePath] = useState<[number, number][]>([]);
+  // Riwayat perjalanan driver (abu-abu)
+  const [traveledPath, setTraveledPath] = useState<[number, number][]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = sessionStorage.getItem('driver_traveled_path');
+        if (saved) return JSON.parse(saved);
+      } catch {
+        // ignore
+      }
+    }
+    return [];
+  });
   const [pickupAddress, setPickupAddress] = useState<string>('');
   const [dropoffAddress, setDropoffAddress] = useState<string>('');
 
@@ -103,7 +145,25 @@ export default function DriverDashboard() {
         (pos) => {
           const lat = pos.coords.latitude;
           const lng = pos.coords.longitude;
+          const newCoord: [number, number] = [lat, lng];
           setDriverLocation({ lat, lng });
+
+          // Catat riwayat jejak perjalanan
+          setTraveledPath((prev) => {
+            if (prev.length > 0) {
+              const last = prev[prev.length - 1];
+              const dLat = Math.abs(last[0] - newCoord[0]);
+              const dLng = Math.abs(last[1] - newCoord[1]);
+              if (dLat < 0.00001 && dLng < 0.00001) return prev;
+            }
+            const updated = [...prev, newCoord];
+            try {
+              sessionStorage.setItem('driver_traveled_path', JSON.stringify(updated));
+            } catch {
+              // ignore
+            }
+            return updated;
+          });
 
           // Send ping to server
           if (socket?.connected) {
@@ -182,17 +242,42 @@ export default function DriverDashboard() {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         />
+
+        {/* Auto Camera Follow to Driver GPS */}
+        <MapController driverLocation={driverLocation} />
         
         {/* Driver Marker */}
         {driverLocation && (
-          <Marker position={[driverLocation.lat, driverLocation.lng]} />
+          <Marker position={[driverLocation.lat, driverLocation.lng]} icon={driverIcon} />
         )}
 
         {/* Active Order Markers & Route */}
         {orders[0] && (
           <>
-            <Marker position={[orders[0].pickup.lat, orders[0].pickup.lng]} />
-            <Marker position={[orders[0].dropoff.lat, orders[0].dropoff.lng]} />
+            <Marker position={[orders[0].pickup.lat, orders[0].pickup.lng]} icon={pickupIcon} />
+            <Marker position={[orders[0].dropoff.lat, orders[0].dropoff.lng]} icon={dropoffIcon} />
+          </>
+        )}
+
+        {/* Riwayat Perjalanan Driver (Traveled History - Abu-abu) */}
+        {traveledPath.length > 1 && (
+          <>
+            <Polyline 
+              positions={traveledPath} 
+              color="#1e293b" 
+              weight={7}
+              opacity={0.4}
+              lineCap="round"
+              lineJoin="round"
+            />
+            <Polyline 
+              positions={traveledPath} 
+              color="#475569" 
+              weight={4}
+              opacity={0.9}
+              lineCap="round"
+              lineJoin="round"
+            />
           </>
         )}
 
@@ -277,9 +362,9 @@ export default function DriverDashboard() {
               >
                 <div className="flex justify-between items-start mb-4">
                   <div>
-                    <span className="inline-block px-3 py-1 bg-secondary-container text-on-secondary-container text-[12px] font-bold rounded-full mb-2">
-                      {order.status}
-                    </span>
+                    <div className="mb-2">
+                      <OrderStatusBadge status={order.status} />
+                    </div>
                     <p className="text-[12px] text-on-surface-variant font-mono">
                       ID: {order.id.slice(0, 8)}...
                     </p>

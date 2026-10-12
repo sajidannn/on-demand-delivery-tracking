@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { apiClient } from '../../lib/api/client';
+import { OrderStatusBadge } from '../../lib/order-status';
 import { getAddressFromCoordinates } from "../../lib/geo";
 
 type Order = {
@@ -50,47 +51,6 @@ export default function CustomerHistory() {
     fetchHistory();
   }, []);
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'PENDING':
-        return (
-          <span className="px-3 py-1 bg-[#FEF3C7] text-[#451A03] text-[12px] font-bold rounded-full">
-            Mencari Kurir
-          </span>
-        );
-      case 'DRIVER_ASSIGNED':
-        return (
-          <span className="px-3 py-1 bg-[#EFF6FF] text-[#1E40AF] text-[12px] font-bold rounded-full">
-            Kurir Menuju Lokasi
-          </span>
-        );
-      case 'PICKED_UP':
-        return (
-          <span className="px-3 py-1 bg-[#FAF5FF] text-[#6B21A8] text-[12px] font-bold rounded-full">
-            Pesanan Diambil
-          </span>
-        );
-      case 'COMPLETED':
-        return (
-          <span className="px-3 py-1 bg-[#F0FDF4] text-[#052E16] text-[12px] font-bold rounded-full">
-            Selesai
-          </span>
-        );
-      case 'NO_DRIVER_AVAILABLE':
-        return (
-          <span className="px-3 py-1 bg-[#FEF2F2] text-[#7F1D1D] text-[12px] font-bold rounded-full">
-            Dibatalkan
-          </span>
-        );
-      default:
-        return (
-          <span className="px-3 py-1 bg-surface-container text-on-surface text-[12px] font-bold rounded-full">
-            {status}
-          </span>
-        );
-    }
-  };
-
   return (
     <div className="max-w-md mx-auto w-full p-4 h-full overflow-y-auto pb-24">
       <h2 className="text-[24px] font-bold text-on-surface mb-6">
@@ -131,7 +91,7 @@ export default function CustomerHistory() {
                     minute: '2-digit',
                   })}
                 </div>
-                {getStatusBadge(order.status)}
+                <OrderStatusBadge status={order.status} />
               </div>
 
               <div className="mb-4">

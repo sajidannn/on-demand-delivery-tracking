@@ -7,6 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
+    "test": "vitest run",
+    "api:types": "openapi-typescript http://localhost:3000/docs-json -o src/lib/api/schema.d.ts",
     "preview": "vite preview"
   },
   "dependencies": {

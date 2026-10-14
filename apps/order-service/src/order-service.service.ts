@@ -6,6 +6,7 @@ import {
   LOCATION_SERVICE_NAME,
   LocationServiceClient,
   OrderDto,
+  OrderDetailDto,
   OrderStatus,
   Role,
   RouteSource,
@@ -60,6 +61,17 @@ export class OrderServiceService implements OnModuleInit {
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };
+  }
+
+  private async toOrderDetailDto(row: OrderRow): Promise<OrderDetailDto> {
+    const historyRows = await this.orderRepository.findHistoryByOrderId(row.id);
+    const history = historyRows.map(r => ({
+      status: r.to_status,
+      at: r.occurred_at.toISOString(),
+      actor: r.actor_type,
+    }));
+
+    return Object.assign(this.toOrderDto(row), { history });
   }
 
   private async releaseQuietly(orderId: string): Promise<void> {
@@ -146,6 +158,7 @@ export class OrderServiceService implements OnModuleInit {
     this.publisher.created({
       orderId: orderRow.id,
       customerId: payload.customerId,
+      at: (orderRow.occurred_at ?? orderRow.created_at).toISOString(),
     }).catch(e => this.logger.error('Failed to publish order.created', e));
 
     const radiusM = Number(this.configService.get('SEARCH_RADIUS_M', 3000));
@@ -198,6 +211,7 @@ export class OrderServiceService implements OnModuleInit {
           orderId: orderRow.id,
           customerId: payload.customerId,
           driverId: response.driver.driverId,
+          at: (updatedRow.occurred_at ?? updatedRow.updated_at).toISOString(),
         }).catch(e => this.logger.error('Failed to publish order.driver_assigned', e));
 
         return this.toOrderDto(updatedRow);
@@ -223,6 +237,7 @@ export class OrderServiceService implements OnModuleInit {
           orderId: orderRow.id,
           customerId: payload.customerId,
           status: OrderStatus.NO_DRIVER_AVAILABLE,
+          at: (updatedRow?.occurred_at ?? updatedRow?.updated_at ?? orderRow.updated_at).toISOString(),
         }).catch(e => this.logger.error('Failed to publish order.status_changed', e));
 
         return this.toOrderDto(rowToReturn);
@@ -250,13 +265,14 @@ export class OrderServiceService implements OnModuleInit {
         orderId: orderRow.id,
         customerId: payload.customerId,
         status: OrderStatus.NO_DRIVER_AVAILABLE,
+        at: (updatedRow?.occurred_at ?? updatedRow?.updated_at ?? orderRow.updated_at).toISOString(),
       }).catch(e => this.logger.error('Failed to publish order.status_changed', e));
 
       return this.toOrderDto(rowToReturn);
     }
   }
 
-  async get(orderId: string, userId: string, role: Role): Promise<OrderDto> {
+  async get(orderId: string, userId: string, role: Role): Promise<OrderDetailDto> {
     const orderRow = await this.orderRepository.findById(orderId);
     if (!orderRow) {
       throw new RpcException({
@@ -272,7 +288,7 @@ export class OrderServiceService implements OnModuleInit {
       throw new RpcException({ code: 'FORBIDDEN', message: 'Akses ditolak' });
     }
 
-    return this.toOrderDto(orderRow);
+    return this.toOrderDetailDto(orderRow);
   }
 
   async list(userId: string, role: Role): Promise<OrderDto[]> {
@@ -328,6 +344,7 @@ export class OrderServiceService implements OnModuleInit {
       status: payload.status,
       fee: orderRow.fee,
       distanceM: orderRow.distance_m,
+      at: (updatedRow.occurred_at ?? updatedRow.updated_at).toISOString(),
     }).catch(e => this.logger.error('Failed to publish order.status_changed', e));
 
     return this.toOrderDto(updatedRow);

@@ -51,6 +51,7 @@ describe('NotificationServiceService', () => {
       const msgs = service.buildCreatedMessages({
         orderId: 'o1',
         customerId: 'c1',
+        at: '2026-10-09T07:12:03.120Z',
       });
       expect(msgs).toHaveLength(1);
       expect(msgs[0]).toMatchObject({
@@ -68,6 +69,7 @@ describe('NotificationServiceService', () => {
         orderId: 'o1',
         customerId: 'c1',
         driverId: 'd1',
+        at: '2026-10-09T07:13:00.000Z',
       });
       expect(msgs).toHaveLength(2);
       expect(msgs[0]).toMatchObject({
@@ -91,6 +93,7 @@ describe('NotificationServiceService', () => {
         orderId: 'o1',
         customerId: 'c1',
         status: OrderStatus.COMPLETED,
+        at: '2026-10-09T07:14:00.000Z',
       });
       expect(msgs).toHaveLength(1);
       expect(msgs[0]).toMatchObject({
@@ -111,6 +114,7 @@ describe('NotificationServiceService', () => {
         status: OrderStatus.COMPLETED,
         fee: 15000,
         distanceM: 2500,
+        at: '2026-10-09T07:14:00.000Z',
       });
 
       expect(mockAuthClient.send).toHaveBeenCalledWith(PATTERNS.AUTH.ME, { userId: 'c1' });

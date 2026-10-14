@@ -120,7 +120,7 @@ export class NotificationServiceService {
       }
     }
 
-    const completedAt = new Date();
+    const completedAt = new Date(data.at);
 
     // 1. Kirim Email Invoice ke Customer
     if (customer?.email) {

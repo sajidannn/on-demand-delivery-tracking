@@ -10,12 +10,14 @@ export interface DriverLocationUpdatedEvent {
 export interface OrderCreatedEvent {
   orderId: string;
   customerId: string;
+  at: string;
 }
 
 export interface OrderDriverAssignedEvent {
   orderId: string;
   customerId: string;
   driverId: string;
+  at: string;
 }
 
 export interface OrderStatusChangedEvent {
@@ -25,6 +27,7 @@ export interface OrderStatusChangedEvent {
   status: OrderStatus;
   fee?: number;
   distanceM?: number;
+  at: string;
 }
 
 export interface OrderLocationPayload {
@@ -38,4 +41,5 @@ export interface OrderStatusPayload {
   orderId: string;
   status: OrderStatus;
   driverId?: string;
+  at: string;
 }

@@ -1,17 +1,17 @@
-import { useState } from "react";
-import { useNavigate, Link, Navigate } from "react-router-dom";
-import { apiClient } from "../lib/api/client";
-import { useAuth } from "../contexts/AuthContext";
-import type { User } from "../contexts/AuthContext";
+import { useState } from 'react';
+import { useNavigate, Link, Navigate } from 'react-router-dom';
+import { apiClient } from '../lib/api/client';
+import { useAuth } from '../contexts/AuthContext';
+import type { User } from '../contexts/AuthContext';
 
 export default function Register() {
-  const [email, setEmail] = useState("");
-  const [name, setName] = useState("");
-  const [password, setPassword] = useState("");
-  const [role, setRole] = useState<"CUSTOMER" | "DRIVER">("CUSTOMER");
-  const [error, setError] = useState("");
+  const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
+  const [password, setPassword] = useState('');
+  const [role, setRole] = useState<'CUSTOMER' | 'DRIVER'>('CUSTOMER');
+  const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   const navigate = useNavigate();
   const { user, login } = useAuth();
 
@@ -21,40 +21,44 @@ export default function Register() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
+    setError('');
     setIsSubmitting(true);
 
     try {
-      const { error: apiError } = await apiClient.POST("/auth/register", {
+      const { error: apiError } = await apiClient.POST('/auth/register', {
         body: { email, password, name, role },
       });
 
       if (apiError) {
-        setError(apiError.message ? String(apiError.message) : "Pendaftaran gagal");
+        setError(
+          apiError.message ? String(apiError.message) : 'Pendaftaran gagal',
+        );
         return;
       }
 
       // Automatically log in after registration
-      const { error: loginError } = await apiClient.POST("/auth/login", {
+      const { error: loginError } = await apiClient.POST('/auth/login', {
         body: { email, password },
       });
 
       if (loginError) {
-        setError("Pendaftaran berhasil, tetapi gagal masuk otomatis. Silakan masuk manual.");
-        setTimeout(() => navigate("/login"), 2000);
+        setError(
+          'Pendaftaran berhasil, tetapi gagal masuk otomatis. Silakan masuk manual.',
+        );
+        setTimeout(() => navigate('/login'), 2000);
         return;
       }
 
-      const { data: meData, error: meError } = await apiClient.GET("/auth/me");
+      const { data: meData, error: meError } = await apiClient.GET('/auth/me');
       if (meError || !meData) {
-        setError("Gagal mengambil data akun setelah mendaftar");
+        setError('Gagal mengambil data akun setelah mendaftar');
         return;
       }
 
       login(meData as User);
-      navigate("/");
-    } catch (_err) {
-      setError("Terjadi kesalahan tak terduga");
+      navigate('/');
+    } catch {
+      setError('Terjadi kesalahan tak terduga');
     } finally {
       setIsSubmitting(false);
     }
@@ -71,7 +75,7 @@ export default function Register() {
             Bergabung dengan UrbanLogis sekarang
           </p>
         </div>
-        
+
         {error && (
           <div className="mb-6 bg-error-container text-on-error-container p-3 rounded-[12px] text-[14px] font-medium text-center">
             {error}
@@ -82,22 +86,22 @@ export default function Register() {
         <div className="mb-6 p-1 bg-surface-container-low border border-surface-container-highest rounded-full flex relative">
           <button
             type="button"
-            onClick={() => setRole("CUSTOMER")}
+            onClick={() => setRole('CUSTOMER')}
             className={`flex-1 h-11 text-[14px] font-bold rounded-full transition-all duration-200 z-10 ${
-              role === "CUSTOMER" 
-                ? "bg-surface-container-lowest shadow-level-1 text-on-surface" 
-                : "text-on-surface-variant"
+              role === 'CUSTOMER'
+                ? 'bg-surface-container-lowest shadow-level-1 text-on-surface'
+                : 'text-on-surface-variant'
             }`}
           >
             Customer
           </button>
           <button
             type="button"
-            onClick={() => setRole("DRIVER")}
+            onClick={() => setRole('DRIVER')}
             className={`flex-1 h-11 text-[14px] font-bold rounded-full transition-all duration-200 z-10 ${
-              role === "DRIVER" 
-                ? "bg-surface-container-lowest shadow-level-1 text-on-surface" 
-                : "text-on-surface-variant"
+              role === 'DRIVER'
+                ? 'bg-surface-container-lowest shadow-level-1 text-on-surface'
+                : 'text-on-surface-variant'
             }`}
           >
             Driver
@@ -106,7 +110,10 @@ export default function Register() {
 
         <form className="space-y-5" onSubmit={handleSubmit}>
           <div>
-            <label className="block text-[12px] font-semibold text-on-surface mb-2" htmlFor="name">
+            <label
+              className="block text-[12px] font-semibold text-on-surface mb-2"
+              htmlFor="name"
+            >
               Nama Lengkap
             </label>
             <input
@@ -121,7 +128,10 @@ export default function Register() {
           </div>
 
           <div>
-            <label className="block text-[12px] font-semibold text-on-surface mb-2" htmlFor="email">
+            <label
+              className="block text-[12px] font-semibold text-on-surface mb-2"
+              htmlFor="email"
+            >
               Email
             </label>
             <input
@@ -136,7 +146,10 @@ export default function Register() {
           </div>
 
           <div>
-            <label className="block text-[12px] font-semibold text-on-surface mb-2" htmlFor="password">
+            <label
+              className="block text-[12px] font-semibold text-on-surface mb-2"
+              htmlFor="password"
+            >
               Password
             </label>
             <input
@@ -155,12 +168,15 @@ export default function Register() {
             disabled={isSubmitting}
             className="w-full h-12 mt-6 flex items-center justify-center bg-primary-container text-[#052E16] text-[14px] font-bold rounded-full hover:bg-primary-container/90 focus:outline-none focus:ring-2 focus:ring-primary-container focus:ring-offset-2 disabled:opacity-50 transition-all"
           >
-            {isSubmitting ? "Mendaftar..." : "Daftar"}
+            {isSubmitting ? 'Mendaftar...' : 'Daftar'}
           </button>
-          
+
           <div className="mt-6 text-center text-[14px]">
             <span className="text-on-surface-variant">Sudah punya akun? </span>
-            <Link to="/login" className="font-semibold text-primary hover:underline">
+            <Link
+              to="/login"
+              className="font-semibold text-primary hover:underline"
+            >
               Masuk di sini
             </Link>
           </div>

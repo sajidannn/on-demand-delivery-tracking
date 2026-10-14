@@ -1,5 +1,5 @@
-import { useAuth } from "../contexts/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 export default function Profile() {
   const { user, logout } = useAuth();
@@ -7,22 +7,27 @@ export default function Profile() {
 
   const handleLogout = () => {
     logout();
-    navigate("/login");
+    navigate('/login');
   };
 
   return (
     <div className="max-w-md mx-auto w-full p-4 h-full overflow-y-auto pb-24">
-      <h2 className="text-[24px] font-bold text-on-surface mb-6">Profil Akun</h2>
-      
+      <h2 className="text-[24px] font-bold text-on-surface mb-6">
+        Profil Akun
+      </h2>
+
       <div className="bg-surface-container-lowest border border-surface-container-highest rounded-[20px] p-6 shadow-level-1 mb-6">
         <div className="flex flex-col items-center mb-6">
           <div className="w-24 h-24 bg-primary-container text-on-primary-container rounded-full flex items-center justify-center text-[36px] font-bold mb-4">
-            {user?.name?.charAt(0).toUpperCase() || user?.email.charAt(0).toUpperCase()}
+            {user?.name?.charAt(0).toUpperCase() ||
+              user?.email.charAt(0).toUpperCase()}
           </div>
-          <h3 className="text-[20px] font-bold text-on-surface">{user?.name}</h3>
+          <h3 className="text-[20px] font-bold text-on-surface">
+            {user?.name}
+          </h3>
           <p className="text-[14px] text-on-surface-variant">{user?.email}</p>
           <span className="mt-2 px-3 py-1 bg-surface-container text-on-surface text-[12px] font-bold rounded-full">
-            {user?.role === "DRIVER" ? "Pengemudi" : "Pelanggan"}
+            {user?.role === 'DRIVER' ? 'Pengemudi' : 'Pelanggan'}
           </span>
         </div>
 

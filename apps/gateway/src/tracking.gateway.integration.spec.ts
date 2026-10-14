@@ -87,7 +87,7 @@ describe('TrackingGateway + Socket.IO sungguhan', () => {
       orderId: 'o1',
     } as never);
     gateway.broadcastOrderStatus(
-      { orderId: 'o1', status: OrderStatus.PICKED_UP },
+      { orderId: 'o1', status: OrderStatus.PICKED_UP, at: '2026-10-09T07:12:00.000Z' },
       'c1',
       'd1',
     );

@@ -349,6 +349,8 @@ lib/        api/ (schema.d.ts hasil generate + client), socket.ts, geo.ts, forma
 
 **Format tampilan:** rupiah `Intl.NumberFormat('id-ID')` (mis. `Rp 10.500`), jarak dalam km 1 desimal, durasi dalam menit dibulatkan ke atas.
 
+**ETA / perkiraan tiba (`lib/eta.ts`):** `formatTripDuration(durationS)` → label `±4 mnt`; `inTransitArrival(status, history, durationS)` → jam lokal `HH:mm` hanya saat status `PICKED_UP` (dihitung dari waktu `PICKED_UP` di riwayat + `durationS`), ditampilkan sebagai perkiraan. Untuk status sebelum pickup, jam absolut tidak ditampilkan karena waktu keberangkatan belum pasti. `durationS` hanya mencakup rute pickup→dropoff (bukan perjalanan driver menuju titik jemput).
+
 **Skrip (`web/package.json`):** `dev`, `build`, `preview`, `lint`, `test`, `api:types`. Skrip root: `web:dev`, `web:build`, `osrm:setup`.
 
 ## 14. Konfigurasi Root yang Harus Menyesuaikan
@@ -381,6 +383,15 @@ lib/        api/ (schema.d.ts hasil generate + client), socket.ts, geo.ts, forma
 **Frontend**
 - `geo.ts` (urutan koordinat, `pointAlong`), formatter, dan hook simulator (timer palsu).
 - Komponen: panel estimasi (state loading/error/fallback), `StatusStepper`, guard rute per role, dan `AuthProvider` (loading/authenticated/anonymous; 401 → login).
+
+**Frontend (Vitest, `web/`)** — `cd web && bun run test` (jsdom, `globals: true`).
+- `lib/geo.test.ts`: `toLatLng`, `toLngLat`, `toLatLngArray` (pembalikan `[lng, lat]` ↔ `[lat, lng]`, tanpa mutasi).
+- `lib/order-timeline.test.ts`: `formatLocalTime` (jam lokal `HH:mm`), `formatDuration` (detik/menit/jam), `deriveActor`, `buildTimeline` (urut menaik + label durasi antar tahap), `appendHistoryEntry` (anti-duplikat `status`+`at`).
+- `lib/eta.test.ts`: `isTerminalStatus`, `formatTripDuration`, `formatArrivalTime`, `pickedUpAt`, `inTransitArrival` (perkiraan tiba hanya saat `PICKED_UP`).
+- `components/OrderTimeline.test.tsx`: render tiap tahap, jam lokal, label durasi, dan kosong saat `history` kosong.
+- `contexts/AuthContext.test.tsx`: inisialisasi dari `/auth/me`, `login`, `logout`, dan reset saat event `auth:unauthorized`.
+
+**Timeline riwayat (v1.2 §4.7 / AC-29):** komponen `components/OrderTimeline.tsx` dirender di panel status `pages/customer/OrderTracking.tsx`. Jam ditampilkan dalam zona waktu perangkat (`HH:mm`); durasi antar tahap dihitung dari selisih `at`. Pembaruan real-time memakai payload `order:status.at` dan ditambahkan ke state `history` tanpa duplikat (`status`+`at`).
 
 **Manual (skenario demo)**
 1. Customer memilih dua titik → estimasi muncul → pesan.

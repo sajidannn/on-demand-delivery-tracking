@@ -1,11 +1,27 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Polyline, useMap, useMapEvents } from 'react-leaflet';
-import { io } from 'socket.io-client';
 import { apiClient } from '../../lib/api/client';
+import type { components } from '../../lib/api/schema.d.ts';
 import { fetchOSRMRoute, getAddressFromCoordinates } from '../../lib/geo';
 import { driverIcon, pickupIcon, dropoffIcon } from '../../lib/map-icons';
-import { OrderStatusBadge, getOrderStatusInfo } from '../../lib/order-status';
+import OrderStatusBadge from '../../components/OrderStatusBadge';
+import { getOrderStatusInfo } from '../../lib/order-status';
+import OrderTimeline from '../../components/OrderTimeline';
+import {
+  createSocket,
+  WS_EVENTS,
+  type OrderStatusEvent,
+  type OrderLocationEvent,
+} from '../../lib/socket';
+import {
+  appendHistoryEntry,
+  deriveActor,
+  type OrderHistoryItem,
+} from '../../lib/order-timeline';
+import { inTransitArrival, formatTripDuration } from '../../lib/eta';
+
+type OrderDetail = components['schemas']['OrderDetailDto'];
 
 function MapController({
   driverLocation,
@@ -18,6 +34,8 @@ function MapController({
 }) {
   const map = useMap();
   const hasInitiallyCentered = useRef(false);
+  const lat = driverLocation?.lat;
+  const lng = driverLocation?.lng;
 
   useMapEvents({
     dragstart() {
@@ -26,21 +44,21 @@ function MapController({
   });
 
   useEffect(() => {
-    if (!driverLocation || !autoFollow) return;
+    if (lat === undefined || lng === undefined || !autoFollow) return;
 
     if (!hasInitiallyCentered.current) {
       hasInitiallyCentered.current = true;
-      map.flyTo([driverLocation.lat, driverLocation.lng], 16, {
+      map.flyTo([lat, lng], 16, {
         animate: true,
         duration: 1.2,
       });
     } else {
-      map.panTo([driverLocation.lat, driverLocation.lng], {
+      map.panTo([lat, lng], {
         animate: true,
         duration: 0.8,
       });
     }
-  }, [map, driverLocation?.lat, driverLocation?.lng, autoFollow]);
+  }, [map, lat, lng, autoFollow]);
 
   return null;
 }
@@ -48,7 +66,8 @@ function MapController({
 export default function CustomerTracking() {
   const { orderId } = useParams<{ orderId: string }>();
   const navigate = useNavigate();
-  const [order, setOrder] = useState<any>(null);
+  const [order, setOrder] = useState<OrderDetail | null>(null);
+  const [history, setHistory] = useState<OrderHistoryItem[]>([]);
   const [driverLocation, setDriverLocation] = useState<{
     lat: number;
     lng: number;
@@ -68,7 +87,9 @@ export default function CustomerTracking() {
     return [];
   });
   const traveledPathRef = useRef<[number, number][]>(traveledPath);
-  traveledPathRef.current = traveledPath;
+  useEffect(() => {
+    traveledPathRef.current = traveledPath;
+  }, [traveledPath]);
 
   const [pickupAddress, setPickupAddress] = useState<string>('');
   const [dropoffAddress, setDropoffAddress] = useState<string>('');
@@ -85,12 +106,13 @@ export default function CustomerTracking() {
         });
         if (apiError) throw apiError;
         setOrder(data);
-        
+
         if (data) {
+          setHistory(data.history ?? []);
           getAddressFromCoordinates(data.pickup.lat, data.pickup.lng).then(setPickupAddress);
           getAddressFromCoordinates(data.dropoff.lat, data.dropoff.lng).then(setDropoffAddress);
         }
-      } catch (err) {
+      } catch {
         setError('Gagal memuat detail pesanan');
       }
     };
@@ -98,26 +120,34 @@ export default function CustomerTracking() {
 
     // Connect WebSocket
     // Since we use HttpOnly cookies, we rely on withCredentials
-    const socketInstance = io(
-      window.location.hostname === 'localhost' ? 'http://localhost:3000' : '/',
-      {
-        withCredentials: true,
-        transports: ['websocket', 'polling'],
-      },
-    );
+    const socketInstance = createSocket();
 
     socketInstance.on('connect', () => {
       console.log('WebSocket connected');
       // Subscribe to this order's updates
-      socketInstance.emit('order:subscribe', { orderId });
+      socketInstance.emit(WS_EVENTS.ORDER_SUBSCRIBE, { orderId });
     });
 
-    socketInstance.on('order:status', (data) => {
+    socketInstance.on(WS_EVENTS.ORDER_STATUS, (data: OrderStatusEvent) => {
       console.log('Status update:', data);
-      setOrder((prev: any) => (prev ? { ...prev, status: data.status } : null));
+      setOrder((prev) =>
+        prev ? { ...prev, status: data.status as OrderDetail['status'] } : null,
+      );
+
+      // Tambahkan ke timeline riwayat (hindari duplikat status+at)
+      const at = data.at;
+      if (at) {
+        setHistory((prev) =>
+          appendHistoryEntry(prev, {
+            status: data.status,
+            at,
+            actor: deriveActor(data.status),
+          }),
+        );
+      }
     });
 
-    socketInstance.on('order:location', (data: { lat: number; lng: number }) => {
+    socketInstance.on(WS_EVENTS.ORDER_LOCATION, (data: OrderLocationEvent) => {
       console.log('Driver location update:', data);
       const newCoord: [number, number] = [data.lat, data.lng];
       setDriverLocation({ lat: data.lat, lng: data.lng });
@@ -157,22 +187,32 @@ export default function CustomerTracking() {
 
   // Update Route when driverLocation or status changes
   useEffect(() => {
-    if (!order) return;
-    
+    const status = order?.status;
+    const pickup = order?.pickup;
+    const dropoff = order?.dropoff;
+    if (!status || !pickup || !dropoff) return;
+
+    const driverLat = driverLocation?.lat;
+    const driverLng = driverLocation?.lng;
+    const driver =
+      driverLat !== undefined && driverLng !== undefined
+        ? { lat: driverLat, lng: driverLng }
+        : null;
+
     const calculateRoute = async () => {
-      if (order.status === "PENDING") {
-        const path = await fetchOSRMRoute(order.pickup, order.dropoff);
+      if (status === "PENDING") {
+        const path = await fetchOSRMRoute(pickup, dropoff);
         setRoutePath(path);
-      } else if (order.status === "DRIVER_ASSIGNED" && driverLocation) {
-        const path = await fetchOSRMRoute(driverLocation, order.pickup);
+      } else if (status === "DRIVER_ASSIGNED" && driver) {
+        const path = await fetchOSRMRoute(driver, pickup);
         setRoutePath(path);
-      } else if (order.status === "PICKED_UP" && driverLocation) {
-        const path = await fetchOSRMRoute(driverLocation, order.dropoff);
+      } else if (status === "PICKED_UP" && driver) {
+        const path = await fetchOSRMRoute(driver, dropoff);
         setRoutePath(path);
 
         // Jika user baru buka halaman saat pesanan sudah PICKED_UP dan belum ada riwayat lokal
         if (traveledPathRef.current.length === 0) {
-          fetchOSRMRoute(order.pickup, driverLocation).then((pastPath) => {
+          fetchOSRMRoute(pickup, driver).then((pastPath) => {
             if (pastPath.length > 0 && traveledPathRef.current.length === 0) {
               setTraveledPath(pastPath);
               if (orderId) {
@@ -185,12 +225,12 @@ export default function CustomerTracking() {
             }
           });
         }
-      } else if (order.status === "COMPLETED") {
+      } else if (status === "COMPLETED") {
         // Ketika pesanan selesai, sisa rute aktif jadi kosong
         setRoutePath([]);
         // Pastikan seluruh rute pickup -> dropoff tampil sebagai riwayat abu-abu
         if (traveledPathRef.current.length === 0) {
-          const path = await fetchOSRMRoute(order.pickup, order.dropoff);
+          const path = await fetchOSRMRoute(pickup, dropoff);
           setTraveledPath(path);
           if (orderId) {
             try {
@@ -201,12 +241,19 @@ export default function CustomerTracking() {
           }
         }
       } else {
-        const path = await fetchOSRMRoute(order.pickup, order.dropoff);
+        const path = await fetchOSRMRoute(pickup, dropoff);
         setRoutePath(path);
       }
     };
     calculateRoute();
-  }, [order?.status, driverLocation?.lat, driverLocation?.lng, orderId]);
+  }, [
+    order?.status,
+    order?.pickup,
+    order?.dropoff,
+    driverLocation?.lat,
+    driverLocation?.lng,
+    orderId,
+  ]);
 
   if (error) {
     return (
@@ -232,6 +279,9 @@ export default function CustomerTracking() {
       </div>
     );
   }
+
+  const tripDuration = formatTripDuration(order.durationS);
+  const arrivalTime = inTransitArrival(order.status, history, order.durationS);
 
   return (
     <div className="relative w-full h-[calc(100vh-64px)] overflow-hidden bg-surface-container-low">
@@ -355,6 +405,18 @@ export default function CustomerTracking() {
                 {(order.distanceM / 1000).toFixed(1)} km
               </span>
             </div>
+            {tripDuration && (
+              <div className="flex justify-between text-[14px]">
+                <span className="text-on-surface-variant">Estimasi perjalanan:</span>
+                <span className="font-bold text-on-surface">±{tripDuration}</span>
+              </div>
+            )}
+            {arrivalTime && (
+              <div className="flex justify-between text-[14px]">
+                <span className="text-on-surface-variant">Perkiraan tiba:</span>
+                <span className="font-bold text-primary">±{arrivalTime}</span>
+              </div>
+            )}
             <div className="flex justify-between text-[14px]">
               <span className="text-on-surface-variant">Driver:</span>
               <span className="font-medium text-on-surface">
@@ -395,6 +457,11 @@ export default function CustomerTracking() {
                 )}
               </div>
             )}
+          </div>
+
+          {/* Timeline riwayat status dengan jam lokal & durasi antar tahap */}
+          <div className="mt-4">
+            <OrderTimeline history={history} />
           </div>
 
           {order.status === 'COMPLETED' && (

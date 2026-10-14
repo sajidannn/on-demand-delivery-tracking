@@ -103,7 +103,21 @@ CREATE TABLE orders (
 );
 CREATE INDEX ON orders (customer_id);
 CREATE INDEX ON orders (driver_id);
+
+CREATE TABLE order_status_history (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  order_id    uuid NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+  from_status order_status NULL,
+  to_status   order_status NOT NULL,
+  actor_type  varchar(20) NOT NULL, -- 'CUSTOMER' | 'SYSTEM' | 'DRIVER'
+  actor_id    uuid NULL,
+  reason      varchar(100) NULL,
+  occurred_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX order_status_history_order_idx ON order_status_history (order_id, occurred_at);
 ```
+
+Riwayat status ditulis lewat CTE atomik bersama `INSERT`/`UPDATE` order; `occurred_at` (jam database) menjadi sumber kebenaran `at` pada event, WebSocket `order:status`, dan `history` di `GET /orders/:id`. `GET /orders` (daftar) tidak memuat `history`.
 
 `gen_random_uuid()` tersedia di PostgreSQL 13+. `distance_m = ST_Distance(pickup, dropoff)` (garis lurus, catat sebagai keterbatasan). `fee` flat dari env `FLAT_FEE`.
 
@@ -171,7 +185,7 @@ Base URL `http://localhost:3000`. Bearer JWT kecuali `/auth/*`.
 | GET    | `/auth/me`           | any      | –                                      | 200 `{id,email,name,role}` | 401                    |
 | POST   | `/orders`            | CUSTOMER | `{pickup:{lat,lng},dropoff:{lat,lng}}` | 201 Order                  | 400, 403               |
 | GET    | `/orders`            | any      | –                                      | 200 `Order[]` (milik user) | 401                    |
-| GET    | `/orders/:id`        | any      | –                                      | 200 Order                  | 403, 404               |
+| GET    | `/orders/:id`        | any      | –                                      | 200 OrderDetail (memuat `history`) | 403, 404        |
 | PATCH  | `/orders/:id/status` | DRIVER   | `{status}` (`PICKED_UP`/`COMPLETED`)   | 200 Order                  | 403, 404, 409          |
 | POST   | `/drivers/online`    | DRIVER   | `{lat,lng}`                            | 200 `{ok:true}`            | 403                    |
 | POST   | `/drivers/offline`   | DRIVER   | –                                      | 200 `{ok:true}`            | 403                    |
@@ -214,7 +228,7 @@ Koneksi: `io("http://localhost:3000", { auth: { token: "<JWT>" } })`. Token dive
 | `driver:location` | client→server | DRIVER   | `{lat,lng,orderId?}`         | emit RMQ `driver.location_updated`; jika `orderId` → forward ke room |
 | `order:subscribe` | client→server | CUSTOMER | `{orderId}`                  | cek kepemilikan via `order.get`, lalu join `order:{id}`. Ack: `{ ok, status, driverId? }` |
 | `order:location`  | server→client | –        | `{orderId,lat,lng,ts}`       | ke room `order:{id}`                                                 |
-| `order:status`    | server→client | –        | `{orderId,status,driverId?}` | diteruskan ke `order:{id}`, `user:{customerId}`, `user:{driverId}`   |
+| `order:status`    | server→client | –        | `{orderId,status,driverId?,at}` | diteruskan ke `order:{id}`, `user:{customerId}`, `user:{driverId}`; `at` = `occurred_at` riwayat |
 
 ## 8. State Machine Order
 
@@ -241,7 +255,7 @@ Transisi lain → `409 INVALID_STATUS_TRANSITION`. Hanya `driver_id` yang tercat
 | Auth    | `auth.validate_token` | `{token}`                     | `{userId,role}` |
 | Auth    | `auth.me`             | `{userId}`                    | `UserDto`       |
 | Order   | `order.create`        | `{customerId,pickup,dropoff}` | `OrderDto`      |
-| Order   | `order.get`           | `{orderId,userId,role}`       | `OrderDto`      |
+| Order   | `order.get`           | `{orderId,userId,role}`       | `OrderDetailDto` (memuat `history`) |
 | Order   | `order.list`          | `{userId,role}`               | `OrderDto[]`    |
 | Order   | `order.update_status` | `{orderId,driverId,status}`   | `OrderDto`      |
 
@@ -283,9 +297,11 @@ Karena ESM, path file proto dirujuk dengan `import.meta.dirname` (atau `fileURLT
 | Event                     | Publisher → Queue                             | Consumer              | Payload                                |
 | ------------------------- | --------------------------------------------- | --------------------- | -------------------------------------- |
 | `driver.location_updated` | Gateway → `location_queue`                    | Location              | `{driverId,lat,lng,ts}`                |
-| `order.created`           | Order → `notification_queue`                  | Notification          | `{orderId,customerId}`                 |
-| `order.driver_assigned`   | Order → `notification_queue`, `gateway_queue` | Notification, Gateway | `{orderId,customerId,driverId}`        |
-| `order.status_changed`    | Order → `notification_queue`, `gateway_queue` | Notification, Gateway | `{orderId,customerId,driverId,status}` |
+| `order.created`           | Order → `notification_queue`                  | Notification          | `{orderId,customerId,at}`              |
+| `order.driver_assigned`   | Order → `notification_queue`, `gateway_queue` | Notification, Gateway | `{orderId,customerId,driverId,at}`     |
+| `order.status_changed`    | Order → `notification_queue`, `gateway_queue` | Notification, Gateway | `{orderId,customerId,driverId?,status,fee?,distanceM?,at}` |
+
+`at` (ISO-8601 UTC) berasal dari `occurred_at` baris `order_status_history`, **bukan** jam saat event dipublish. Gateway dan Notification tidak menghitung jam sendiri.
 
 Order memakai dua `ClientProxy` RMQ (satu per queue tujuan). Nama queue dan event ada di `libs/common/constants` dan `libs/common/events`.
 

@@ -23,6 +23,7 @@ describe('OrderServiceService', () => {
       findById: vi.fn(),
       findByCustomerId: vi.fn(),
       findByDriverId: vi.fn(),
+      findHistoryByOrderId: vi.fn().mockResolvedValue([]),
       updateStatus: vi.fn(),
       updateDriverAndStatus: vi.fn(),
     };
@@ -77,10 +78,17 @@ describe('OrderServiceService', () => {
   });
 
   describe('create', () => {
+    const created_at = new Date('2026-10-09T07:12:00.000Z');
+    const occurredPending = new Date('2026-10-09T07:12:03.120Z');
+    const occurredAssigned = new Date('2026-10-09T07:13:00.000Z');
+    const occurredNoDriver = new Date('2026-10-09T07:13:30.000Z');
+
     it('should assign driver if reserveNearest finds one (reserve ketemu)', async () => {
       repo.createOrder.mockResolvedValue({
         id: 'order-1',
         status: OrderStatus.PENDING,
+        created_at,
+        occurred_at: occurredPending,
       });
       locationServiceMock.reserveNearestDriver.mockReturnValue(
         of({ found: true, driver: { driverId: 'driver-1' } }),
@@ -89,6 +97,8 @@ describe('OrderServiceService', () => {
         id: 'order-1',
         driver_id: 'driver-1',
         status: OrderStatus.DRIVER_ASSIGNED,
+        updated_at: occurredAssigned,
+        occurred_at: occurredAssigned,
       });
 
       const payload = {
@@ -109,14 +119,25 @@ describe('OrderServiceService', () => {
         null,
         null,
       );
-      expect(publisherMock.created).toHaveBeenCalledWith({ orderId: 'order-1', customerId: 'cust-1' });
-      expect(publisherMock.driverAssigned).toHaveBeenCalledWith({ orderId: 'order-1', customerId: 'cust-1', driverId: 'driver-1' });
+      expect(publisherMock.created).toHaveBeenCalledWith({
+        orderId: 'order-1',
+        customerId: 'cust-1',
+        at: occurredPending.toISOString(),
+      });
+      expect(publisherMock.driverAssigned).toHaveBeenCalledWith({
+        orderId: 'order-1',
+        customerId: 'cust-1',
+        driverId: 'driver-1',
+        at: occurredAssigned.toISOString(),
+      });
     });
 
     it('should set NO_DRIVER_AVAILABLE if no driver found (reserve tidak ketemu)', async () => {
       repo.createOrder.mockResolvedValue({
         id: 'order-1',
         status: OrderStatus.PENDING,
+        created_at,
+        occurred_at: occurredPending,
       });
       locationServiceMock.reserveNearestDriver.mockReturnValue(
         of({ found: false }),
@@ -124,6 +145,8 @@ describe('OrderServiceService', () => {
       repo.updateStatus.mockResolvedValue({
         id: 'order-1',
         status: OrderStatus.NO_DRIVER_AVAILABLE,
+        updated_at: occurredNoDriver,
+        occurred_at: occurredNoDriver,
       });
 
       const payload = {
@@ -142,14 +165,25 @@ describe('OrderServiceService', () => {
         null,
         'NO_DRIVER',
       );
-      expect(publisherMock.created).toHaveBeenCalledWith({ orderId: 'order-1', customerId: 'cust-1' });
-      expect(publisherMock.statusChanged).toHaveBeenCalledWith({ orderId: 'order-1', customerId: 'cust-1', status: OrderStatus.NO_DRIVER_AVAILABLE });
+      expect(publisherMock.created).toHaveBeenCalledWith({
+        orderId: 'order-1',
+        customerId: 'cust-1',
+        at: occurredPending.toISOString(),
+      });
+      expect(publisherMock.statusChanged).toHaveBeenCalledWith({
+        orderId: 'order-1',
+        customerId: 'cust-1',
+        status: OrderStatus.NO_DRIVER_AVAILABLE,
+        at: occurredNoDriver.toISOString(),
+      });
     });
 
     it('should set NO_DRIVER_AVAILABLE and call releaseQuietly on error (error + release)', async () => {
       repo.createOrder.mockResolvedValue({
         id: 'order-1',
         status: OrderStatus.PENDING,
+        created_at,
+        occurred_at: occurredPending,
       });
       locationServiceMock.reserveNearestDriver.mockReturnValue(
         throwError(() => new Error('timeout')),
@@ -158,6 +192,8 @@ describe('OrderServiceService', () => {
       repo.updateStatus.mockResolvedValue({
         id: 'order-1',
         status: OrderStatus.NO_DRIVER_AVAILABLE,
+        updated_at: occurredNoDriver,
+        occurred_at: occurredNoDriver,
       });
 
       const payload = {
@@ -169,8 +205,17 @@ describe('OrderServiceService', () => {
 
       expect(res.status).toBe(OrderStatus.NO_DRIVER_AVAILABLE);
       expect(locationServiceMock.releaseDriver).toHaveBeenCalled();
-      expect(publisherMock.created).toHaveBeenCalledWith({ orderId: 'order-1', customerId: 'cust-1' });
-      expect(publisherMock.statusChanged).toHaveBeenCalledWith({ orderId: 'order-1', customerId: 'cust-1', status: OrderStatus.NO_DRIVER_AVAILABLE });
+      expect(publisherMock.created).toHaveBeenCalledWith({
+        orderId: 'order-1',
+        customerId: 'cust-1',
+        at: occurredPending.toISOString(),
+      });
+      expect(publisherMock.statusChanged).toHaveBeenCalledWith({
+        orderId: 'order-1',
+        customerId: 'cust-1',
+        status: OrderStatus.NO_DRIVER_AVAILABLE,
+        at: occurredNoDriver.toISOString(),
+      });
     });
   });
 
@@ -197,6 +242,47 @@ describe('OrderServiceService', () => {
       repo.findById.mockResolvedValue({ id: 'order-1', customer_id: 'cust-1' });
       const res = await service.get('order-1', 'cust-1', Role.CUSTOMER);
       expect(res.id).toBe('order-1');
+    });
+
+    it('should include history timeline mapped from order_status_history rows', async () => {
+      repo.findById.mockResolvedValue({
+        id: 'order-1',
+        customer_id: 'cust-1',
+        status: OrderStatus.COMPLETED,
+      });
+      repo.findHistoryByOrderId.mockResolvedValue([
+        {
+          to_status: OrderStatus.PENDING,
+          actor_type: 'CUSTOMER',
+          occurred_at: new Date('2026-10-09T07:12:03.120Z'),
+        },
+        {
+          to_status: OrderStatus.DRIVER_ASSIGNED,
+          actor_type: 'SYSTEM',
+          occurred_at: new Date('2026-10-09T07:13:00.000Z'),
+        },
+      ]);
+
+      const res = await service.get('order-1', 'cust-1', Role.CUSTOMER);
+
+      expect(repo.findHistoryByOrderId).toHaveBeenCalledWith('order-1');
+      expect(res.history).toEqual([
+        { status: OrderStatus.PENDING, at: '2026-10-09T07:12:03.120Z', actor: 'CUSTOMER' },
+        { status: OrderStatus.DRIVER_ASSIGNED, at: '2026-10-09T07:13:00.000Z', actor: 'SYSTEM' },
+      ]);
+    });
+  });
+
+  describe('list', () => {
+    it('should return orders without history property', async () => {
+      repo.findByCustomerId.mockResolvedValue([
+        { id: 'order-1', customer_id: 'cust-1', status: OrderStatus.PENDING },
+      ]);
+
+      const res = await service.list('cust-1', Role.CUSTOMER);
+
+      expect(res).toHaveLength(1);
+      expect(res[0]).not.toHaveProperty('history');
     });
   });
 
@@ -232,6 +318,7 @@ describe('OrderServiceService', () => {
     });
 
     it('should call releaseQuietly when status is COMPLETED', async () => {
+      const occurredAt = new Date('2026-10-09T07:14:00.000Z');
       repo.findById.mockResolvedValue({
         id: 'order-1',
         driver_id: 'driver-1',
@@ -241,6 +328,8 @@ describe('OrderServiceService', () => {
         id: 'order-1',
         driver_id: 'driver-1',
         status: OrderStatus.COMPLETED,
+        occurred_at: occurredAt,
+        updated_at: occurredAt,
       });
       locationServiceMock.releaseDriver.mockReturnValue(of({ released: true }));
 
@@ -255,6 +344,7 @@ describe('OrderServiceService', () => {
         customerId: undefined,
         driverId: 'driver-1',
         status: OrderStatus.COMPLETED,
+        at: occurredAt.toISOString(),
       });
     });
   });

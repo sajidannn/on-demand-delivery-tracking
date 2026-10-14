@@ -5,7 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { io, Socket } from 'socket.io-client';
 import { fetchOSRMRoute, getAddressFromCoordinates } from '../../lib/geo';
 import { driverIcon, pickupIcon, dropoffIcon } from '../../lib/map-icons';
-import { OrderStatusBadge } from '../../lib/order-status';
+import OrderStatusBadge from '../../components/OrderStatusBadge';
 
 function MapController({
   driverLocation,
@@ -14,23 +14,25 @@ function MapController({
 }) {
   const map = useMap();
   const hasInitiallyCentered = useRef(false);
+  const lat = driverLocation?.lat;
+  const lng = driverLocation?.lng;
 
   useEffect(() => {
-    if (!driverLocation) return;
+    if (lat === undefined || lng === undefined) return;
 
     if (!hasInitiallyCentered.current) {
       hasInitiallyCentered.current = true;
-      map.flyTo([driverLocation.lat, driverLocation.lng], 16, {
+      map.flyTo([lat, lng], 16, {
         animate: true,
         duration: 1.2,
       });
     } else {
-      map.panTo([driverLocation.lat, driverLocation.lng], {
+      map.panTo([lat, lng], {
         animate: true,
         duration: 0.8,
       });
     }
-  }, [map, driverLocation?.lat, driverLocation?.lng]);
+  }, [map, lat, lng]);
 
   return null;
 }
@@ -98,12 +100,13 @@ export default function DriverDashboard() {
           ).then(setDropoffAddress);
         }
       }
-    } catch (err) {
+    } catch {
       setError('Kesalahan jaringan saat memuat pesanan');
     }
   };
 
   useEffect(() => {
+    // oxlint-disable-next-line react/set-state-in-effect -- polling pesanan saat mount
     fetchOrders();
     const interval = setInterval(fetchOrders, 5000);
     return () => clearInterval(interval);
@@ -120,6 +123,7 @@ export default function DriverDashboard() {
           : activeOrder.dropoff;
       fetchOSRMRoute(driverLocation, target).then(setRoutePath);
     } else {
+      // oxlint-disable-next-line react/set-state-in-effect -- reset rute saat tak ada order aktif
       setRoutePath([]);
     }
   }, [driverLocation, orders]);

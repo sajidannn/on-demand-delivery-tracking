@@ -24,6 +24,7 @@ import {
   CreateOrderDto,
   CreateOrderPayloadDto,
   OrderDto,
+  OrderDetailDto,
   ORDER_SERVICE_TOKEN,
   Role,
   UpdateOrderStatusDto,
@@ -155,7 +156,7 @@ export class OrderController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Mendapatkan detail pesanan' })
-  @ApiResponse({ status: 200, description: 'Detail pesanan', type: OrderDto })
+  @ApiResponse({ status: 200, description: 'Detail pesanan', type: OrderDetailDto })
   @ApiResponse({
     status: 401,
     description: 'Token tidak valid (UNAUTHORIZED)',
@@ -179,10 +180,10 @@ export class OrderController {
   async getOrder(
     @Param('id', ParseUUIDPipe) orderId: string,
     @Req() req: AuthenticatedRequest,
-  ): Promise<OrderDto> {
+  ): Promise<OrderDetailDto> {
     return firstValueFrom(
       callService(
-        this.orderClient.send<OrderDto>(PATTERNS.ORDER.GET, {
+        this.orderClient.send<OrderDetailDto>(PATTERNS.ORDER.GET, {
           orderId,
           userId: req.user.userId,
           role: req.user.role,

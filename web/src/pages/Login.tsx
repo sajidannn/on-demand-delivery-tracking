@@ -1,15 +1,15 @@
-import { useState } from "react";
-import { useNavigate, Link, Navigate } from "react-router-dom";
-import { apiClient } from "../lib/api/client";
-import { useAuth } from "../contexts/AuthContext";
-import type { User } from "../contexts/AuthContext";
+import { useState } from 'react';
+import { useNavigate, Link, Navigate } from 'react-router-dom';
+import { apiClient } from '../lib/api/client';
+import { useAuth } from '../contexts/AuthContext';
+import type { User } from '../contexts/AuthContext';
 
 export default function Login() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   const navigate = useNavigate();
   const { user, login } = useAuth();
 
@@ -19,30 +19,30 @@ export default function Login() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
+    setError('');
     setIsSubmitting(true);
 
     try {
-      const { error: apiError } = await apiClient.POST("/auth/login", {
+      const { error: apiError } = await apiClient.POST('/auth/login', {
         body: { email, password },
       });
 
       if (apiError) {
-        setError(apiError.message ? String(apiError.message) : "Login failed");
+        setError(apiError.message ? String(apiError.message) : 'Login failed');
         return;
       }
 
-      const { data: meData, error: meError } = await apiClient.GET("/auth/me");
-      
+      const { data: meData, error: meError } = await apiClient.GET('/auth/me');
+
       if (meError || !meData) {
-        setError("Failed to fetch user details");
+        setError('Failed to fetch user details');
         return;
       }
 
       login(meData as User);
-      navigate("/");
-    } catch (_err) {
-      setError("An unexpected error occurred");
+      navigate('/');
+    } catch {
+      setError('An unexpected error occurred');
     } finally {
       setIsSubmitting(false);
     }
@@ -59,7 +59,7 @@ export default function Login() {
             Selamat datang kembali di UrbanLogis
           </p>
         </div>
-        
+
         {error && (
           <div className="mb-6 bg-error-container text-on-error-container p-3 rounded-[12px] text-[14px] font-medium text-center">
             {error}
@@ -68,7 +68,10 @@ export default function Login() {
 
         <form className="space-y-5" onSubmit={handleSubmit}>
           <div>
-            <label className="block text-[12px] font-semibold text-on-surface mb-2" htmlFor="email">
+            <label
+              className="block text-[12px] font-semibold text-on-surface mb-2"
+              htmlFor="email"
+            >
               Email
             </label>
             <input
@@ -83,7 +86,10 @@ export default function Login() {
           </div>
 
           <div>
-            <label className="block text-[12px] font-semibold text-on-surface mb-2" htmlFor="password">
+            <label
+              className="block text-[12px] font-semibold text-on-surface mb-2"
+              htmlFor="password"
+            >
               Password
             </label>
             <input
@@ -102,12 +108,15 @@ export default function Login() {
             disabled={isSubmitting}
             className="w-full h-12 mt-6 flex items-center justify-center bg-primary-container text-[#052E16] text-[14px] font-bold rounded-full hover:bg-primary-container/90 focus:outline-none focus:ring-2 focus:ring-primary-container focus:ring-offset-2 disabled:opacity-50 transition-all"
           >
-            {isSubmitting ? "Memproses..." : "Masuk"}
+            {isSubmitting ? 'Memproses...' : 'Masuk'}
           </button>
-          
+
           <div className="mt-6 text-center text-[14px]">
             <span className="text-on-surface-variant">Belum punya akun? </span>
-            <Link to="/register" className="font-semibold text-primary hover:underline">
+            <Link
+              to="/register"
+              className="font-semibold text-primary hover:underline"
+            >
               Daftar di sini
             </Link>
           </div>

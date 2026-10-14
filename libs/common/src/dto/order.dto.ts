@@ -67,6 +67,17 @@ export class UpdateOrderStatusPayloadDto extends UpdateOrderStatusDto {
   driverId: string;
 }
 
+export class OrderStatusHistoryItemDto {
+  @ApiProperty({ enum: OrderStatus, example: OrderStatus.PENDING })
+  status: OrderStatus;
+
+  @ApiProperty({ example: '2026-10-09T07:12:03.120Z' })
+  at: string;
+
+  @ApiProperty({ enum: ['CUSTOMER', 'SYSTEM', 'DRIVER'], example: 'CUSTOMER' })
+  actor: 'CUSTOMER' | 'SYSTEM' | 'DRIVER';
+}
+
 export class OrderDto {
   @ApiProperty({ example: '123e4567-e89b-12d3-a456-426614174000' })
   id: string;
@@ -106,4 +117,9 @@ export class OrderDto {
 
   @ApiProperty({ example: '2026-10-01T12:05:00Z' })
   updatedAt: Date;
+}
+
+export class OrderDetailDto extends OrderDto {
+  @ApiProperty({ type: [OrderStatusHistoryItemDto] })
+  history: OrderStatusHistoryItemDto[];
 }

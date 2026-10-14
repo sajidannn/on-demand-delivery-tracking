@@ -327,6 +327,58 @@ export interface components {
             routeSource: "OSRM" | "STRAIGHT_LINE";
             route?: components["schemas"]["RouteGeometryDto"];
         };
+        OrderStatusHistoryItemDto: {
+            /**
+             * @example PENDING
+             * @enum {string}
+             */
+            status: "PENDING" | "DRIVER_ASSIGNED" | "PICKED_UP" | "COMPLETED" | "NO_DRIVER_AVAILABLE";
+            /** @example 2026-10-09T07:12:03.120Z */
+            at: string;
+            /**
+             * @example CUSTOMER
+             * @enum {string}
+             */
+            actor: "CUSTOMER" | "SYSTEM" | "DRIVER";
+        };
+        OrderDetailDto: {
+            /** @example 123e4567-e89b-12d3-a456-426614174000 */
+            id: string;
+            /** @example 123e4567-e89b-12d3-a456-426614174001 */
+            customerId: string;
+            /** @example 123e4567-e89b-12d3-a456-426614174002 */
+            driverId?: string;
+            /**
+             * @example DRIVER_ASSIGNED
+             * @enum {string}
+             */
+            status: "PENDING" | "DRIVER_ASSIGNED" | "PICKED_UP" | "COMPLETED" | "NO_DRIVER_AVAILABLE";
+            pickup: components["schemas"]["CoordinateDto"];
+            dropoff: components["schemas"]["CoordinateDto"];
+            /** @example 1650 */
+            distanceM: number;
+            /** @example 10000 */
+            fee: number;
+            /** @example 312 */
+            durationS?: number;
+            /**
+             * @example STRAIGHT_LINE
+             * @enum {string}
+             */
+            routeSource: "OSRM" | "STRAIGHT_LINE";
+            route?: components["schemas"]["RouteGeometryDto"];
+            /**
+             * Format: date-time
+             * @example 2026-10-01T12:00:00Z
+             */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @example 2026-10-01T12:05:00Z
+             */
+            updatedAt: string;
+            history: components["schemas"]["OrderStatusHistoryItemDto"][];
+        };
         UpdateOrderStatusDto: {
             /**
              * @example PICKED_UP
@@ -731,7 +783,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["OrderDto"];
+                    "application/json": components["schemas"]["OrderDetailDto"];
                 };
             };
             /** @description Token tidak valid (UNAUTHORIZED) */

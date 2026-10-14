@@ -29,21 +29,21 @@ describe('OrderEventsPublisher', () => {
   });
 
   it('created() should only emit to notifClient', async () => {
-    const event = { orderId: 'o1', customerId: 'c1' };
+    const event = { orderId: 'o1', customerId: 'c1', at: '2026-10-09T07:12:03.120Z' };
     await publisher.created(event);
     expect(notifClient.emit).toHaveBeenCalledWith(EVENTS.ORDER.CREATED, event);
     expect(gatewayClient.emit).not.toHaveBeenCalled();
   });
 
   it('driverAssigned() should emit to both clients', async () => {
-    const event = { orderId: 'o1', customerId: 'c1', driverId: 'd1' };
+    const event = { orderId: 'o1', customerId: 'c1', driverId: 'd1', at: '2026-10-09T07:13:00.000Z' };
     await publisher.driverAssigned(event);
     expect(notifClient.emit).toHaveBeenCalledWith(EVENTS.ORDER.DRIVER_ASSIGNED, event);
     expect(gatewayClient.emit).toHaveBeenCalledWith(EVENTS.ORDER.DRIVER_ASSIGNED, event);
   });
 
   it('statusChanged() should emit to both clients', async () => {
-    const event = { orderId: 'o1', customerId: 'c1', status: OrderStatus.COMPLETED };
+    const event = { orderId: 'o1', customerId: 'c1', status: OrderStatus.COMPLETED, at: '2026-10-09T07:14:00.000Z' };
     await publisher.statusChanged(event);
     expect(notifClient.emit).toHaveBeenCalledWith(EVENTS.ORDER.STATUS_CHANGED, event);
     expect(gatewayClient.emit).toHaveBeenCalledWith(EVENTS.ORDER.STATUS_CHANGED, event);
@@ -51,7 +51,7 @@ describe('OrderEventsPublisher', () => {
 
   it('publish should not throw if emit fails', async () => {
     notifClient.emit.mockReturnValue(throwError(() => new Error('emit error')));
-    const event = { orderId: 'o1', customerId: 'c1' };
+    const event = { orderId: 'o1', customerId: 'c1', at: '2026-10-09T07:12:03.120Z' };
     
     // Should not reject
     await expect(publisher.created(event)).resolves.toBeUndefined();
@@ -62,7 +62,7 @@ describe('OrderEventsPublisher', () => {
     vi.useFakeTimers();
     // delay > 2000ms
     notifClient.emit.mockReturnValue(of(undefined).pipe(delay(2500)));
-    const event = { orderId: 'o1', customerId: 'c1' };
+    const event = { orderId: 'o1', customerId: 'c1', at: '2026-10-09T07:12:03.120Z' };
     
     const promise = publisher.created(event);
     

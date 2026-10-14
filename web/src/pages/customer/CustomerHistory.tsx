@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { apiClient } from '../../lib/api/client';
-import { OrderStatusBadge } from '../../lib/order-status';
+import OrderStatusBadge from '../../components/OrderStatusBadge';
 import { getAddressFromCoordinates } from "../../lib/geo";
 
 type Order = {

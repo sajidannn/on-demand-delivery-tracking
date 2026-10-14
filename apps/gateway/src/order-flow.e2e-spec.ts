@@ -31,6 +31,16 @@ interface OrderBody {
   fee: number;
 }
 
+interface OrderHistoryItem {
+  status: OrderStatus;
+  at: string;
+  actor: 'CUSTOMER' | 'SYSTEM' | 'DRIVER';
+}
+
+interface OrderDetailBody extends OrderBody {
+  history: OrderHistoryItem[];
+}
+
 interface Actor {
   id: string;
   token: string;
@@ -357,6 +367,137 @@ describe('E2E alur order penuh', () => {
 
     const own = await api(`/orders/${orders[1].id}`, { token: customer.token });
     expect(own.status).toBe(200);
+  });
+});
+
+describe('AC-27/AC-28: riwayat order dan timestamp', () => {
+  // Titik jemput jauh dari titik di atas agar hanya driver khusus ini yang terpilih.
+  const historyPickup = {
+    lat: -6.2 - Math.random() * 0.1,
+    lng: 106.8 + Math.random() * 0.1,
+  };
+  const historyDropoff = {
+    lat: historyPickup.lat + 0.01,
+    lng: historyPickup.lng + 0.01,
+  };
+
+  let historyCustomer: Actor;
+  let historyDriver: Driver;
+  let socket: Socket;
+  let orderId: string;
+  const socketEvents: OrderStatusPayload[] = [];
+
+  beforeAll(async () => {
+    historyCustomer = await registerAndLogin(Role.CUSTOMER, 'hist-cust');
+    const actor = await registerAndLogin(Role.DRIVER, 'hist-drv');
+    historyDriver = {
+      ...actor,
+      lat: historyPickup.lat + 0.001,
+      lng: historyPickup.lng,
+    };
+    const online = await api('/drivers/online', {
+      method: 'POST',
+      token: historyDriver.token,
+      body: { lat: historyDriver.lat, lng: historyDriver.lng },
+    });
+    expect(online.status).toBe(200);
+  });
+
+  afterAll(async () => {
+    if (socket) socket.close();
+    await api('/drivers/offline', { method: 'POST', token: historyDriver.token });
+  });
+
+  it('alur penuh menghasilkan history berurutan dan at sama dengan event order:status', async () => {
+    socket = await connectSocket(historyCustomer.token);
+    socket.on(WS_EVENTS.ORDER_STATUS, (p: OrderStatusPayload) =>
+      socketEvents.push(p),
+    );
+    await sleep(AUTH_SETTLE_MS);
+
+    const created = await api<OrderBody>('/orders', {
+      method: 'POST',
+      token: historyCustomer.token,
+      body: { pickup: historyPickup, dropoff: historyDropoff },
+    });
+    expect(created.status).toBe(201);
+    expect(created.body.status).toBe(OrderStatus.DRIVER_ASSIGNED);
+    expect(created.body.driverId).toBe(historyDriver.id);
+    orderId = created.body.id;
+
+    const assignedEvent = await waitFor(
+      () =>
+        socketEvents.find(
+          (e) =>
+            e.orderId === orderId && e.status === OrderStatus.DRIVER_ASSIGNED,
+        ),
+      5000,
+      'order:status DRIVER_ASSIGNED',
+    );
+
+    const picked = await api<OrderBody>(`/orders/${orderId}/status`, {
+      method: 'PATCH',
+      token: historyDriver.token,
+      body: { status: OrderStatus.PICKED_UP },
+    });
+    expect(picked.status).toBe(200);
+    const pickedEvent = await waitFor(
+      () =>
+        socketEvents.find(
+          (e) => e.orderId === orderId && e.status === OrderStatus.PICKED_UP,
+        ),
+      5000,
+      'order:status PICKED_UP',
+    );
+
+    const done = await api<OrderBody>(`/orders/${orderId}/status`, {
+      method: 'PATCH',
+      token: historyDriver.token,
+      body: { status: OrderStatus.COMPLETED },
+    });
+    expect(done.status).toBe(200);
+    const completedEvent = await waitFor(
+      () =>
+        socketEvents.find(
+          (e) => e.orderId === orderId && e.status === OrderStatus.COMPLETED,
+        ),
+      5000,
+      'order:status COMPLETED',
+    );
+
+    // AC-27: GET /orders/:id memuat history berurutan menaik
+    const detail = await api<OrderDetailBody>(`/orders/${orderId}`, {
+      token: historyCustomer.token,
+    });
+    expect(detail.status).toBe(200);
+    expect(detail.body.history).toHaveLength(4);
+    expect(
+      detail.body.history.map((h) => [h.status, h.actor]),
+    ).toEqual([
+      [OrderStatus.PENDING, 'CUSTOMER'],
+      [OrderStatus.DRIVER_ASSIGNED, 'SYSTEM'],
+      [OrderStatus.PICKED_UP, 'DRIVER'],
+      [OrderStatus.COMPLETED, 'DRIVER'],
+    ]);
+
+    const times = detail.body.history.map((h) => new Date(h.at).getTime());
+    expect(times).toEqual([...times].sort((a, b) => a - b));
+
+    // AC-28: at pada event order:status sama persis dengan occurred_at riwayat
+    expect(detail.body.history[1].at).toBe(assignedEvent.at);
+    expect(detail.body.history[2].at).toBe(pickedEvent.at);
+    expect(detail.body.history[3].at).toBe(completedEvent.at);
+  });
+
+  it('GET /orders (list) tidak memuat history', async () => {
+    const list = await api<Array<OrderBody & { history?: unknown }>>('/orders', {
+      token: historyCustomer.token,
+    });
+    expect(list.status).toBe(200);
+    expect(list.body.length).toBeGreaterThan(0);
+    for (const item of list.body) {
+      expect(item.history).toBeUndefined();
+    }
   });
 });
 

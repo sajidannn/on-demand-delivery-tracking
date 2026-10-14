@@ -4,6 +4,7 @@ import { MapContainer, TileLayer, Marker, useMapEvents, useMap, Polyline } from 
 import { apiClient } from "../../lib/api/client";
 import { getAddressFromCoordinates } from "../../lib/geo";
 import { pickupIcon, dropoffIcon } from "../../lib/map-icons";
+import { formatTripDuration } from "../../lib/eta";
 
 type LatLng = { lat: number; lng: number };
 
@@ -107,12 +108,6 @@ export default function CustomerDashboard() {
     );
   };
 
-  useEffect(() => {
-    if (pickup && dropoff) {
-      fetchEstimate();
-    }
-  }, [pickup, dropoff]);
-
   const fetchEstimate = async () => {
     if (!pickup || !dropoff) return;
     
@@ -128,12 +123,19 @@ export default function CustomerDashboard() {
       } else if (data) {
         setEstimate(data);
       }
-    } catch (err) {
+    } catch {
       setError("Terjadi kesalahan jaringan");
     } finally {
       setIsEstimating(false);
     }
   };
+
+  useEffect(() => {
+    if (pickup && dropoff) {
+      fetchEstimate();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pickup, dropoff]);
 
   const handleOrder = async () => {
     if (!pickup || !dropoff || !estimate) return;
@@ -149,7 +151,7 @@ export default function CustomerDashboard() {
       } else if (data) {
         navigate(`/customer/track/${data.id}`);
       }
-    } catch (err) {
+    } catch {
       setError("Terjadi kesalahan saat memesan");
     } finally {
       setIsOrdering(false);
@@ -299,6 +301,14 @@ export default function CustomerDashboard() {
                   {(estimate.distanceM / 1000).toFixed(1)} km
                 </span>
               </div>
+              {formatTripDuration(estimate.durationS) && (
+                <div className="flex justify-between items-center">
+                  <span className="text-[14px] text-on-surface-variant">Estimasi perjalanan</span>
+                  <span className="text-[14px] font-semibold text-on-surface">
+                    ±{formatTripDuration(estimate.durationS)}
+                  </span>
+                </div>
+              )}
             </div>
           )}
 

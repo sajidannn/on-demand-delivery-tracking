@@ -29,7 +29,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         setUser(null);
       }
-    } catch (_err) {
+    } catch {
       setUser(null);
     } finally {
       setIsLoading(false);
@@ -37,6 +37,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
+    // oxlint-disable-next-line react/set-state-in-effect -- fetch sesi sekali saat mount
     fetchUser();
 
     // Listen to unauthorized event from apiClient

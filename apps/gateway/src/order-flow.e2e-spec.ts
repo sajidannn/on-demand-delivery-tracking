@@ -528,11 +528,168 @@ describe('AC-08: Swagger lengkap', () => {
           problems.push(`${label}: terlindungi tapi tanpa respons 401`);
         }
         if (['post', 'patch'].includes(method) && !op.requestBody) {
-          const noBodyOk = path.startsWith('/drivers/offline');
+          // Endpoint tanpa body: logout driver dan cancel order (identitas dari JWT).
+          const noBodyOk =
+            path.startsWith('/drivers/offline') || path.endsWith('/cancel');
           if (!noBodyOk) problems.push(`${label}: tanpa requestBody`);
         }
       }
     }
     expect(problems).toEqual([]);
+  });
+});
+
+describe('AC-30/AC-31/AC-32: pembatalan order oleh customer', () => {
+  // Titik jemput jauh dari titik lain agar hanya driver khusus ini yang terpilih.
+  const cancelPickup = {
+    lat: -7.2 - Math.random() * 0.1,
+    lng: 108.8 + Math.random() * 0.1,
+  };
+  const cancelDropoff = {
+    lat: cancelPickup.lat + 0.01,
+    lng: cancelPickup.lng + 0.01,
+  };
+
+  let customerA: Actor;
+  let customerB: Actor;
+  let cancelDriver: Driver;
+
+  beforeAll(async () => {
+    customerA = await registerAndLogin(Role.CUSTOMER, 'cancel-cust');
+    customerB = await registerAndLogin(Role.CUSTOMER, 'cancel-other');
+    const actor = await registerAndLogin(Role.DRIVER, 'cancel-drv');
+    cancelDriver = {
+      ...actor,
+      lat: cancelPickup.lat + 0.001,
+      lng: cancelPickup.lng,
+    };
+    const online = await api('/drivers/online', {
+      method: 'POST',
+      token: cancelDriver.token,
+      body: { lat: cancelDriver.lat, lng: cancelDriver.lng },
+    });
+    expect(online.status).toBe(200);
+  });
+
+  afterAll(async () => {
+    await api('/drivers/offline', {
+      method: 'POST',
+      token: cancelDriver.token,
+    });
+  });
+
+  it('AC-30: membatalkan order DRIVER_ASSIGNED melepas driver dan mencatat riwayat', async () => {
+    // 1) Order dibuat dan langsung ter-assign ke driver khusus ini.
+    const created = await api<OrderBody>('/orders', {
+      method: 'POST',
+      token: customerA.token,
+      body: { pickup: cancelPickup, dropoff: cancelDropoff },
+    });
+    expect(created.status).toBe(201);
+    expect(created.body.status).toBe(OrderStatus.DRIVER_ASSIGNED);
+    expect(created.body.driverId).toBe(cancelDriver.id);
+    const orderId = created.body.id;
+
+    // 2) Customer pemilik membatalkan → 200 CANCELLED.
+    const cancelled = await api<OrderBody>(`/orders/${orderId}/cancel`, {
+      method: 'POST',
+      token: customerA.token,
+    });
+    expect(cancelled.status).toBe(200);
+    expect(cancelled.body.status).toBe(OrderStatus.CANCELLED);
+
+    // 3) Riwayat mencatat CANCELLED dengan aktor CUSTOMER.
+    const detail = await api<OrderDetailBody>(`/orders/${orderId}`, {
+      token: customerA.token,
+    });
+    expect(detail.status).toBe(200);
+    expect(
+      detail.body.history.map((h) => [h.status, h.actor]),
+    ).toEqual([
+      [OrderStatus.PENDING, 'CUSTOMER'],
+      [OrderStatus.DRIVER_ASSIGNED, 'SYSTEM'],
+      [OrderStatus.CANCELLED, 'CUSTOMER'],
+    ]);
+
+    // 4) Driver yang dilepas bisa menerima reservasi order berikutnya (pola AC-10).
+    const next = await api<OrderBody>('/orders', {
+      method: 'POST',
+      token: customerB.token,
+      body: { pickup: cancelPickup, dropoff: cancelDropoff },
+    });
+    expect(next.status).toBe(201);
+    expect(next.body.status).toBe(OrderStatus.DRIVER_ASSIGNED);
+    expect(next.body.driverId).toBe(cancelDriver.id);
+
+    // Bersih-bersih: selesaikan order kedua agar driver kembali idle.
+    const picked = await api<OrderBody>(`/orders/${next.body.id}/status`, {
+      method: 'PATCH',
+      token: cancelDriver.token,
+      body: { status: OrderStatus.PICKED_UP },
+    });
+    expect(picked.status).toBe(200);
+    const completed = await api<OrderBody>(`/orders/${next.body.id}/status`, {
+      method: 'PATCH',
+      token: cancelDriver.token,
+      body: { status: OrderStatus.COMPLETED },
+    });
+    expect(completed.status).toBe(200);
+  });
+
+  it('AC-31: membatalkan order yang sudah PICKED_UP ditolak (409)', async () => {
+    const created = await api<OrderBody>('/orders', {
+      method: 'POST',
+      token: customerA.token,
+      body: { pickup: cancelPickup, dropoff: cancelDropoff },
+    });
+    expect(created.status).toBe(201);
+    expect(created.body.driverId).toBe(cancelDriver.id);
+    const orderId = created.body.id;
+
+    const picked = await api<OrderBody>(`/orders/${orderId}/status`, {
+      method: 'PATCH',
+      token: cancelDriver.token,
+      body: { status: OrderStatus.PICKED_UP },
+    });
+    expect(picked.status).toBe(200);
+
+    const cancelled = await api<{ code: string }>(
+      `/orders/${orderId}/cancel`,
+      { method: 'POST', token: customerA.token },
+    );
+    expect(cancelled.status).toBe(409);
+    expect(cancelled.body.code).toBe('INVALID_STATUS_TRANSITION');
+
+    // Selesaikan order agar driver kembali idle untuk test berikutnya.
+    const completed = await api<OrderBody>(`/orders/${orderId}/status`, {
+      method: 'PATCH',
+      token: cancelDriver.token,
+      body: { status: OrderStatus.COMPLETED },
+    });
+    expect(completed.status).toBe(200);
+  });
+
+  it('AC-32: customer lain tidak boleh membatalkan order (403)', async () => {
+    const created = await api<OrderBody>('/orders', {
+      method: 'POST',
+      token: customerA.token,
+      body: { pickup: cancelPickup, dropoff: cancelDropoff },
+    });
+    expect(created.status).toBe(201);
+    const orderId = created.body.id;
+
+    const cancelled = await api<{ code: string }>(
+      `/orders/${orderId}/cancel`,
+      { method: 'POST', token: customerB.token },
+    );
+    expect(cancelled.status).toBe(403);
+    expect(cancelled.body.code).toBe('FORBIDDEN');
+
+    // Bersih-bersih: batalkan dengan customer pemilik agar driver dilepas.
+    const cancelledByOwner = await api(
+      `/orders/${orderId}/cancel`,
+      { method: 'POST', token: customerA.token },
+    );
+    expect(cancelledByOwner.status).toBe(200);
   });
 });

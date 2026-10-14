@@ -2,9 +2,11 @@ import { Controller, ValidationPipe, UsePipes } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { OrderServiceService } from './order-service.service.js';
 import {
+  CancelOrderPayloadDto,
   CreateOrderPayloadDto,
   EstimateOrderDto,
   OrderDto,
+  OrderDetailDto,
   OrderEstimateDto,
   Role,
   UpdateOrderStatusPayloadDto,
@@ -40,6 +42,13 @@ export class OrderServiceController {
     @Payload() data: UpdateOrderStatusPayloadDto,
   ): Promise<OrderDto> {
     return this.orderServiceService.updateStatus(data);
+  }
+
+  @MessagePattern(PATTERNS.ORDER.CANCEL)
+  async cancelOrder(
+    @Payload() data: CancelOrderPayloadDto,
+  ): Promise<OrderDetailDto> {
+    return this.orderServiceService.cancel(data);
   }
 
   @MessagePattern(PATTERNS.ORDER.ESTIMATE)

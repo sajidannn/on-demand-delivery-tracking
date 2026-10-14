@@ -67,6 +67,16 @@ export class UpdateOrderStatusPayloadDto extends UpdateOrderStatusDto {
   driverId: string;
 }
 
+export class CancelOrderPayloadDto {
+  @IsUUID()
+  @IsNotEmpty()
+  orderId: string;
+
+  @IsUUID()
+  @IsNotEmpty()
+  customerId: string;
+}
+
 export class OrderStatusHistoryItemDto {
   @ApiProperty({ enum: OrderStatus, example: OrderStatus.PENDING })
   status: OrderStatus;

@@ -2,6 +2,7 @@ import { Inject, Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { RpcException } from '@nestjs/microservices';
 import type { ClientGrpc } from '@nestjs/microservices';
 import {
+  CancelOrderPayloadDto,
   CreateOrderPayloadDto,
   LOCATION_SERVICE_NAME,
   LocationServiceClient,
@@ -348,5 +349,51 @@ export class OrderServiceService implements OnModuleInit {
     }).catch(e => this.logger.error('Failed to publish order.status_changed', e));
 
     return this.toOrderDto(updatedRow);
+  }
+
+  async cancel(payload: CancelOrderPayloadDto): Promise<OrderDetailDto> {
+    const orderRow = await this.orderRepository.findById(payload.orderId);
+    if (!orderRow) {
+      throw new RpcException({
+        code: 'NOT_FOUND',
+        message: 'Order tidak ditemukan',
+      });
+    }
+
+    if (orderRow.customer_id !== payload.customerId) {
+      throw new RpcException({ code: 'FORBIDDEN', message: 'Akses ditolak' });
+    }
+
+    this.stateMachine.validateTransition(orderRow.status, OrderStatus.CANCELLED);
+
+    const updatedRow = await this.orderRepository.updateStatus(
+      payload.orderId,
+      OrderStatus.CANCELLED,
+      orderRow.status,
+      'CUSTOMER',
+      payload.customerId,
+      'CUSTOMER_CANCEL',
+    );
+
+    if (!updatedRow) {
+      throw new RpcException({
+        code: 'INVALID_STATUS_TRANSITION',
+        message: 'Order sudah diperbarui oleh proses lain',
+      });
+    }
+
+    if (orderRow.driver_id) {
+      void this.releaseQuietly(payload.orderId); // fire and forget
+    }
+
+    this.publisher.statusChanged({
+      orderId: payload.orderId,
+      customerId: payload.customerId,
+      driverId: orderRow.driver_id ?? undefined,
+      status: OrderStatus.CANCELLED,
+      at: (updatedRow.occurred_at ?? updatedRow.updated_at).toISOString(),
+    }).catch(e => this.logger.error('Failed to publish order.status_changed', e));
+
+    return this.toOrderDetailDto(updatedRow);
   }
 }

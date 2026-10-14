@@ -22,6 +22,7 @@ export const PATTERNS = {
     LIST: 'order.list',
     UPDATE_STATUS: 'order.update_status',
     ESTIMATE: 'order.estimate',
+    CANCEL: 'order.cancel',
   },
 };
 

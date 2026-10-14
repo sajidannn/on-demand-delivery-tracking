@@ -35,6 +35,7 @@ import {
   EstimateOrderDto,
   OrderEstimateDto,
   RouteSource,
+  CancelOrderPayloadDto,
 } from '@app/common';
 import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
 import { RolesGuard } from './guards/roles.guard.js';
@@ -247,6 +248,58 @@ export class OrderController {
     return firstValueFrom(
       callService(
         this.orderClient.send<OrderDto>(PATTERNS.ORDER.UPDATE_STATUS, payload),
+        'order-service',
+        5000,
+      ),
+    );
+  }
+
+  @Post(':id/cancel')
+  @HttpCode(HttpStatus.OK)
+  @Roles(Role.CUSTOMER)
+  @ApiOperation({ summary: 'Membatalkan pesanan (Hanya Customer pemilik)' })
+  @ApiResponse({
+    status: 200,
+    description: 'Pesanan berhasil dibatalkan',
+    type: OrderDetailDto,
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Token tidak valid (UNAUTHORIZED)',
+    type: ErrorResponseDto,
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Bukan pemilik pesanan (FORBIDDEN)',
+    type: ErrorResponseDto,
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Pesanan tidak ditemukan',
+    type: ErrorResponseDto,
+  })
+  @ApiResponse({
+    status: 409,
+    description:
+      'Status pesanan tidak dapat dibatalkan (INVALID_STATUS_TRANSITION)',
+    type: ErrorResponseDto,
+  })
+  @ApiResponse({
+    status: 503,
+    description: 'Layanan order tidak tersedia (SERVICE_UNAVAILABLE)',
+    type: ErrorResponseDto,
+  })
+  async cancelOrder(
+    @Param('id', ParseUUIDPipe) orderId: string,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<OrderDetailDto> {
+    const payload: CancelOrderPayloadDto = {
+      orderId,
+      customerId: req.user.userId,
+    };
+    return firstValueFrom(
+      callService(
+        this.orderClient.send<OrderDetailDto>(PATTERNS.ORDER.CANCEL, payload),
         'order-service',
         5000,
       ),

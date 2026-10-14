@@ -348,4 +348,134 @@ describe('OrderServiceService', () => {
       });
     });
   });
+
+  describe('cancel', () => {
+    const occurredCancelled = new Date('2026-10-09T07:15:00.000Z');
+
+    const assignedRow = {
+      id: 'order-1',
+      customer_id: 'cust-1',
+      driver_id: 'driver-1',
+      status: OrderStatus.DRIVER_ASSIGNED,
+      updated_at: occurredCancelled,
+    };
+
+    it('should cancel order from DRIVER_ASSIGNED, release driver, and publish event (success)', async () => {
+      repo.findById.mockResolvedValue(assignedRow);
+      repo.updateStatus.mockResolvedValue({
+        ...assignedRow,
+        status: OrderStatus.CANCELLED,
+        occurred_at: occurredCancelled,
+      });
+      locationServiceMock.releaseDriver.mockReturnValue(of({ released: true }));
+      repo.findHistoryByOrderId.mockResolvedValue([
+        {
+          to_status: OrderStatus.CANCELLED,
+          actor_type: 'CUSTOMER',
+          occurred_at: occurredCancelled,
+        },
+      ]);
+
+      const res = await service.cancel({ orderId: 'order-1', customerId: 'cust-1' });
+
+      expect(repo.updateStatus).toHaveBeenCalledWith(
+        'order-1',
+        OrderStatus.CANCELLED,
+        OrderStatus.DRIVER_ASSIGNED,
+        'CUSTOMER',
+        'cust-1',
+        'CUSTOMER_CANCEL',
+      );
+      expect(stateMachine.validateTransition).toHaveBeenCalledWith(
+        OrderStatus.DRIVER_ASSIGNED,
+        OrderStatus.CANCELLED,
+      );
+      expect(locationServiceMock.releaseDriver).toHaveBeenCalled();
+      expect(publisherMock.statusChanged).toHaveBeenCalledWith({
+        orderId: 'order-1',
+        customerId: 'cust-1',
+        driverId: 'driver-1',
+        status: OrderStatus.CANCELLED,
+        at: occurredCancelled.toISOString(),
+      });
+      expect(res.status).toBe(OrderStatus.CANCELLED);
+      expect(res.history).toEqual([
+        { status: OrderStatus.CANCELLED, at: occurredCancelled.toISOString(), actor: 'CUSTOMER' },
+      ]);
+    });
+
+    it('should cancel order from PENDING without releasing driver (no driver)', async () => {
+      repo.findById.mockResolvedValue({
+        id: 'order-1',
+        customer_id: 'cust-1',
+        driver_id: null,
+        status: OrderStatus.PENDING,
+      });
+      repo.updateStatus.mockResolvedValue({
+        id: 'order-1',
+        customer_id: 'cust-1',
+        driver_id: null,
+        status: OrderStatus.CANCELLED,
+        occurred_at: occurredCancelled,
+        updated_at: occurredCancelled,
+      });
+
+      await service.cancel({ orderId: 'order-1', customerId: 'cust-1' });
+
+      expect(locationServiceMock.releaseDriver).not.toHaveBeenCalled();
+      expect(publisherMock.statusChanged).toHaveBeenCalledWith({
+        orderId: 'order-1',
+        customerId: 'cust-1',
+        driverId: undefined,
+        status: OrderStatus.CANCELLED,
+        at: occurredCancelled.toISOString(),
+      });
+    });
+
+    it('should throw INVALID_STATUS_TRANSITION (409) if race lost (updateStatus returns null)', async () => {
+      repo.findById.mockResolvedValue(assignedRow);
+      repo.updateStatus.mockResolvedValue(null);
+
+      await expect(
+        service.cancel({ orderId: 'order-1', customerId: 'cust-1' }),
+      ).rejects.toMatchObject({
+        error: { code: 'INVALID_STATUS_TRANSITION' },
+      });
+      expect(locationServiceMock.releaseDriver).not.toHaveBeenCalled();
+      expect(publisherMock.statusChanged).not.toHaveBeenCalled();
+    });
+
+    it('should throw FORBIDDEN (403) if customer is not the owner', async () => {
+      repo.findById.mockResolvedValue({ id: 'order-1', customer_id: 'cust-2' });
+      await expect(
+        service.cancel({ orderId: 'order-1', customerId: 'cust-1' }),
+      ).rejects.toMatchObject({ error: { code: 'FORBIDDEN' } });
+      expect(repo.updateStatus).not.toHaveBeenCalled();
+    });
+
+    it('should throw NOT_FOUND (404) if order does not exist', async () => {
+      repo.findById.mockResolvedValue(null);
+      await expect(
+        service.cancel({ orderId: 'order-1', customerId: 'cust-1' }),
+      ).rejects.toMatchObject({ error: { code: 'NOT_FOUND' } });
+    });
+
+    it('should throw INVALID_STATUS_TRANSITION (409) if order already PICKED_UP', async () => {
+      repo.findById.mockResolvedValue({
+        id: 'order-1',
+        customer_id: 'cust-1',
+        driver_id: 'driver-1',
+        status: OrderStatus.PICKED_UP,
+      });
+      stateMachine.validateTransition.mockImplementation(() => {
+        throw new RpcException({ code: 'INVALID_STATUS_TRANSITION' });
+      });
+
+      await expect(
+        service.cancel({ orderId: 'order-1', customerId: 'cust-1' }),
+      ).rejects.toMatchObject({ error: { code: 'INVALID_STATUS_TRANSITION' } });
+      expect(repo.updateStatus).not.toHaveBeenCalled();
+      expect(locationServiceMock.releaseDriver).not.toHaveBeenCalled();
+    });
+  });
 });

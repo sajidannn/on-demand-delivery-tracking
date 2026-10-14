@@ -13,11 +13,16 @@ export class OrderStateMachine {
       [OrderStatus.PENDING]: [
         OrderStatus.DRIVER_ASSIGNED,
         OrderStatus.NO_DRIVER_AVAILABLE,
+        OrderStatus.CANCELLED,
       ],
-      [OrderStatus.DRIVER_ASSIGNED]: [OrderStatus.PICKED_UP],
+      [OrderStatus.DRIVER_ASSIGNED]: [
+        OrderStatus.PICKED_UP,
+        OrderStatus.CANCELLED,
+      ],
       [OrderStatus.PICKED_UP]: [OrderStatus.COMPLETED],
       [OrderStatus.COMPLETED]: [],
       [OrderStatus.NO_DRIVER_AVAILABLE]: [],
+      [OrderStatus.CANCELLED]: [],
     };
 
     const allowed = validTransitions[currentStatus] || [];

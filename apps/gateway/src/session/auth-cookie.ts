@@ -1,5 +1,27 @@
 import { CookieOptions, Response } from 'express';
 
+const VALID_SAMESITE = ['lax', 'strict', 'none'] as const;
+type SameSiteValue = (typeof VALID_SAMESITE)[number];
+
+/**
+ * Validasi konfigurasi cookie saat boot.
+ * Lempar Error agar gateway gagal start bila config tidak valid.
+ * Panggil sekali dari main.ts sebelum app.listen().
+ */
+export function validateCookieConfig(): void {
+  const sameSite = process.env.COOKIE_SAMESITE || 'lax';
+  if (!VALID_SAMESITE.includes(sameSite as SameSiteValue)) {
+    throw new Error(
+      `COOKIE_SAMESITE tidak valid: "${sameSite}". Nilai yang diizinkan: lax, strict, none.`,
+    );
+  }
+  if (sameSite === 'none' && process.env.COOKIE_SECURE !== 'true') {
+    throw new Error(
+      'COOKIE_SAMESITE=none mewajibkan COOKIE_SECURE=true (cookie SameSite=None harus dikirim lewat HTTPS).',
+    );
+  }
+}
+
 export function maxAgeFromJwt(token: string, nowMs = Date.now()): number {
   const payload = token.split('.')[1] ?? '';
   const decoded = Buffer.from(payload, 'base64url').toString('utf8');
@@ -12,7 +34,8 @@ export function maxAgeFromJwt(token: string, nowMs = Date.now()): number {
 }
 
 export function cookieOptions(token?: string): CookieOptions {
-  const sameSite = (process.env.COOKIE_SAMESITE || 'lax') as 'lax' | 'strict' | 'none';
+  const raw = process.env.COOKIE_SAMESITE || 'lax';
+  const sameSite = (VALID_SAMESITE.includes(raw as SameSiteValue) ? raw : 'lax') as SameSiteValue;
   const secure = process.env.COOKIE_SECURE === 'true';
   const maxAge = token ? maxAgeFromJwt(token) : 0;
 

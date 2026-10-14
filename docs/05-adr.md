@@ -99,3 +99,10 @@ Format: Konteks → Keputusan → Konsekuensi. Status semua: **Accepted**. Janga
 3. Pada Fase 6 ini Gateway tidak menggunakan *Redis Adapter* (keterbatasan 1 instance).
 **Konsekuensi:** 
 Garbage collection memori harus diurus secara manual (`handleDisconnect` dan saat event status `COMPLETED`). Jika aplikasi di-scale menjadi *multi-instance*, wajib memasang *Redis Adapter*.
+
+## ADR-016 — Email Notifikasi via Nodemailer di Notification Service
+
+**Konteks:** Notification Service sudah menangani event `order.*` dan mencatat log. Diputuskan untuk menambahkan pengiriman email sebagai output nyata yang bisa diverifikasi dalam demo (bukan hanya log terminal). Email perlu bekerja tanpa konfigurasi apapun saat development.
+**Keputusan:** Gunakan **nodemailer** di Notification Service. Jika `SMTP_HOST` tidak diisi (mode dev), nodemailer otomatis membuat akun **Ethereal** (email sandbox gratis dari nodemailer) dan mencetak preview URL ke log. Jika `SMTP_HOST` diisi, menggunakan SMTP sungguhan. Konfigurasi lengkap lewat `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` di `.env` (lihat `.env.example`).
+**Konsekuensi:** Developer bisa langsung melihat email terkirim tanpa setup SMTP lokal. Di production, cukup isi `SMTP_*` di `.env`. Ketergantungan baru: `nodemailer` (ringan, mature). Tidak ada retry atau queue email — email yang gagal terkirim hanya di-log sebagai `warn`, tidak mengganggu alur order.
+

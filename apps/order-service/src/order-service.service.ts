@@ -18,6 +18,7 @@ import { OrderRepository, OrderRow } from './order.repository.js';
 import { OrderStateMachine } from './order-state-machine.service.js';
 import { OrderEventsPublisher } from './order-events.publisher.js';
 import { RoutingService } from './routing/routing.service.js';
+import { haversineDistanceM } from './routing/routing.service.js';
 import { calculateFee } from './routing/fee-calculator.js';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
@@ -76,14 +77,16 @@ export class OrderServiceService implements OnModuleInit {
   }
 
   async estimate(payload: EstimateOrderDto): Promise<OrderEstimateDto> {
-    const estimate = await this.routingService.getRouteEstimate(payload.pickup, payload.dropoff);
-    
-    if (estimate.distanceM < 50) {
+    // Pre-validasi jarak minimum sebelum memanggil OSRM (hemat rate limit)
+    const straightLineM = haversineDistanceM(payload.pickup, payload.dropoff);
+    if (straightLineM < 50) {
       throw new RpcException({
         code: 'VALIDATION_ERROR',
         message: 'Jarak minimum adalah 50 meter',
       });
     }
+
+    const estimate = await this.routingService.getRouteEstimate(payload.pickup, payload.dropoff);
 
     const feeConfig = {
       base: Number(this.configService.get('FEE_BASE', 5000)),
@@ -104,14 +107,16 @@ export class OrderServiceService implements OnModuleInit {
   }
 
   async create(payload: CreateOrderPayloadDto): Promise<OrderDto> {
-    const estimate = await this.routingService.getRouteEstimate(payload.pickup, payload.dropoff);
-    
-    if (estimate.distanceM < 50) {
+    // Pre-validasi jarak minimum sebelum memanggil OSRM (hemat rate limit)
+    const straightLineM = haversineDistanceM(payload.pickup, payload.dropoff);
+    if (straightLineM < 50) {
       throw new RpcException({
         code: 'VALIDATION_ERROR',
         message: 'Jarak minimum adalah 50 meter',
       });
     }
+
+    const estimate = await this.routingService.getRouteEstimate(payload.pickup, payload.dropoff);
 
     const feeConfig = {
       base: Number(this.configService.get('FEE_BASE', 5000)),
@@ -173,6 +178,9 @@ export class OrderServiceService implements OnModuleInit {
           response.driver.driverId,
           OrderStatus.DRIVER_ASSIGNED,
           orderRow.status,
+          'SYSTEM',
+          null,
+          null,
         );
 
         if (!updatedRow) {
@@ -203,6 +211,9 @@ export class OrderServiceService implements OnModuleInit {
           orderRow.id,
           OrderStatus.NO_DRIVER_AVAILABLE,
           orderRow.status,
+          'SYSTEM',
+          null,
+          'NO_DRIVER',
         );
         
         const rowToReturn = updatedRow || { ...orderRow, status: OrderStatus.NO_DRIVER_AVAILABLE };
@@ -228,6 +239,9 @@ export class OrderServiceService implements OnModuleInit {
         orderRow.id,
         OrderStatus.NO_DRIVER_AVAILABLE,
         orderRow.status,
+        'SYSTEM',
+        null,
+        'NO_DRIVER',
       );
 
       const rowToReturn = updatedRow || { ...orderRow, status: OrderStatus.NO_DRIVER_AVAILABLE };
@@ -291,6 +305,9 @@ export class OrderServiceService implements OnModuleInit {
       payload.orderId,
       payload.status,
       orderRow.status,
+      'DRIVER',
+      payload.driverId,
+      null,
     );
 
     if (!updatedRow) {

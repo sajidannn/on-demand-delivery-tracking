@@ -10,8 +10,12 @@ import {
 import { MicroserviceOptions } from '@nestjs/microservices';
 import { IoAdapter } from '@nestjs/platform-socket.io';
 import cookieParser from 'cookie-parser';
+import { validateCookieConfig } from './session/auth-cookie.js';
 
 async function bootstrap() {
+  // Fail-fast: validasi cookie config sebelum service menerima request apa pun
+  validateCookieConfig();
+
   const app = await NestFactory.create(GatewayModule);
 
   const rawOrigins = process.env.CORS_ORIGINS ?? '';

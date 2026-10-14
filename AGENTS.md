@@ -6,10 +6,10 @@ Proyek **latihan** (NestJS microservice + PostGIS), target ±7 hari. Prioritaska
 
 | Butuh                      | Baca                                       |
 | -------------------------- | ------------------------------------------ |
-| Fitur & batas scope        | `docs/01-prd.md`                           |
+| Fitur & batas scope        | `docs/01-prd.md` (v1.0) · `docs/06-prd-v1.1-ui-routing.md` (v1.1) · `docs/v1.2-rencana-penyempurnaan.md` (v1.2) |
 | Arsitektur & alur          | `docs/02-sdd.md`                           |
 | Kontrak API/DB/event/proto | `docs/03-tsd.md` (sumber kebenaran teknis) |
-| Urutan & task              | `docs/04-implementation-plan.md`           |
+| Urutan & task              | `docs/04-implementation-plan.md` (v1.0) · `docs/09-implementation-plan-v1.1-ui-routing.md` (v1.1) |
 | Alasan keputusan           | `docs/05-adr.md`                           |
 
 Jika kode dan dokumen bertentangan, **tanyakan** atau perbarui dokumen bersama perubahannya; jangan diam-diam menyimpang.
@@ -48,6 +48,16 @@ Gunakan `bun run test`, **bukan** `bun test` (itu test runner bawaan Bun, bukan 
 8. **Secret & konfigurasi** lewat `@nestjs/config` + `.env`; jangan commit `.env`.
 9. **Swagger:** setiap endpoint Gateway wajib `@ApiTags`, `@ApiOperation`, `@ApiResponse` (sukses + error utama), `@ApiBearerAuth` bila terlindungi, dan DTO ber-`@ApiProperty({ example })`.
 10. **Jangan menambah fitur di luar PRD §5**, tidak menambah dependensi besar (Redis, ORM lain, dll.) tanpa ADR baru.
+
+## Aturan tambahan v1.1 (web app + cookie auth)
+
+11. **`web/` terisolasi:** direktori `web/` tidak boleh mengimpor dari `libs/common`. Kontrak antar frontend–backend hanya lewat type yang di-generate dari OpenAPI (`bun run api:types`).
+12. **Token hanya di cookie HttpOnly:** token JWT **dilarang** disimpan di `localStorage`, `sessionStorage`, maupun `document.cookie` dari JavaScript. Cookie hanya boleh dibuat oleh server lewat `apps/gateway/src/session/`. Verifikasi: `grep -rnE 'localStorage|sessionStorage|document\.cookie' web/src` harus kosong untuk hal yang berkaitan dengan auth token.
+13. **`sessionStorage` boleh untuk data UI non-sensitif:** data tampilan seperti jejak rute di peta boleh disimpan di `sessionStorage` (karena bukan data auth dan hilang saat tab ditutup). Data ini bukan token dan tidak memiliki implikasi keamanan.
+14. **CORS tanpa wildcard:** `origin: '*'` dilarang di seluruh konfigurasi gateway. Gateway gagal start bila `CORS_ORIGINS` kosong atau mengandung `*`.
+15. **Konversi koordinat terpusat:** konversi antara format `{ lat, lng }` dan format GeoJSON/OSRM (`[lng, lat]`) hanya boleh dilakukan di `web/src/lib/geo.ts` (frontend) dan `OsrmClient` (backend). Jangan lakukan konversi inline di tempat lain.
+16. **Cookie config fail-fast:** `validateCookieConfig()` dipanggil saat gateway boot. Nilai `COOKIE_SAMESITE` harus `lax`, `strict`, atau `none`. Jika `none`, maka `COOKIE_SECURE` harus `true`.
+17. **CSRF protection:** request tidak aman (POST/PUT/PATCH/DELETE) yang diautentikasi lewat cookie wajib menyertakan header `X-Requested-With: XMLHttpRequest`, atau akan ditolak 403. Request dengan `Authorization: Bearer` tidak terkena aturan ini.
 
 ## Konvensi kode
 

@@ -105,6 +105,9 @@ describe('OrderServiceService', () => {
         'driver-1',
         OrderStatus.DRIVER_ASSIGNED,
         OrderStatus.PENDING,
+        'SYSTEM',
+        null,
+        null,
       );
       expect(publisherMock.created).toHaveBeenCalledWith({ orderId: 'order-1', customerId: 'cust-1' });
       expect(publisherMock.driverAssigned).toHaveBeenCalledWith({ orderId: 'order-1', customerId: 'cust-1', driverId: 'driver-1' });
@@ -135,6 +138,9 @@ describe('OrderServiceService', () => {
         'order-1',
         OrderStatus.NO_DRIVER_AVAILABLE,
         OrderStatus.PENDING,
+        'SYSTEM',
+        null,
+        'NO_DRIVER',
       );
       expect(publisherMock.created).toHaveBeenCalledWith({ orderId: 'order-1', customerId: 'cust-1' });
       expect(publisherMock.statusChanged).toHaveBeenCalledWith({ orderId: 'order-1', customerId: 'cust-1', status: OrderStatus.NO_DRIVER_AVAILABLE });

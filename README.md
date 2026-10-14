@@ -152,8 +152,9 @@ Dokumentasi interaktif (lengkap dengan contoh request dan respons) ada di `/docs
 | POST   | `/orders`                             | CUSTOMER                             |
 | GET    | `/orders`, `/orders/:id`              | semua (hanya milik sendiri)          |
 | PATCH  | `/orders/:id/status`                  | DRIVER (hanya driver yang di-assign) |
+| POST   | `/orders/:id/cancel`                  | CUSTOMER (hanya pemilik order)       |
 
-Status order: `PENDING → DRIVER_ASSIGNED → PICKED_UP → COMPLETED` (atau `NO_DRIVER_AVAILABLE`).
+Status order: `PENDING → DRIVER_ASSIGNED → PICKED_UP → COMPLETED` (atau `NO_DRIVER_AVAILABLE`). Order berstatus `PENDING` atau `DRIVER_ASSIGNED` dapat dibatalkan oleh customer pemilik melalui `POST /orders/:id/cancel` (driver yang ter-assign otomatis dilepas).
 
 ### WebSocket (Socket.IO)
 

@@ -175,6 +175,23 @@ export interface paths {
         patch: operations["OrderController_updateStatus"];
         trace?: never;
     };
+    "/orders/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Membatalkan pesanan (Hanya Customer pemilik) */
+        post: operations["OrderController_cancelOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -283,7 +300,7 @@ export interface components {
              * @example DRIVER_ASSIGNED
              * @enum {string}
              */
-            status: "PENDING" | "DRIVER_ASSIGNED" | "PICKED_UP" | "COMPLETED" | "NO_DRIVER_AVAILABLE";
+            status: "PENDING" | "DRIVER_ASSIGNED" | "PICKED_UP" | "COMPLETED" | "NO_DRIVER_AVAILABLE" | "CANCELLED";
             pickup: components["schemas"]["CoordinateDto"];
             dropoff: components["schemas"]["CoordinateDto"];
             /** @example 1650 */
@@ -332,7 +349,7 @@ export interface components {
              * @example PENDING
              * @enum {string}
              */
-            status: "PENDING" | "DRIVER_ASSIGNED" | "PICKED_UP" | "COMPLETED" | "NO_DRIVER_AVAILABLE";
+            status: "PENDING" | "DRIVER_ASSIGNED" | "PICKED_UP" | "COMPLETED" | "NO_DRIVER_AVAILABLE" | "CANCELLED";
             /** @example 2026-10-09T07:12:03.120Z */
             at: string;
             /**
@@ -352,7 +369,7 @@ export interface components {
              * @example DRIVER_ASSIGNED
              * @enum {string}
              */
-            status: "PENDING" | "DRIVER_ASSIGNED" | "PICKED_UP" | "COMPLETED" | "NO_DRIVER_AVAILABLE";
+            status: "PENDING" | "DRIVER_ASSIGNED" | "PICKED_UP" | "COMPLETED" | "NO_DRIVER_AVAILABLE" | "CANCELLED";
             pickup: components["schemas"]["CoordinateDto"];
             dropoff: components["schemas"]["CoordinateDto"];
             /** @example 1650 */
@@ -885,6 +902,73 @@ export interface operations {
                 };
             };
             /** @description Transisi status ilegal */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description Layanan order tidak tersedia (SERVICE_UNAVAILABLE) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+        };
+    };
+    OrderController_cancelOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Pesanan berhasil dibatalkan */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderDetailDto"];
+                };
+            };
+            /** @description Token tidak valid (UNAUTHORIZED) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description Bukan pemilik pesanan (FORBIDDEN) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description Pesanan tidak ditemukan */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description Status pesanan tidak dapat dibatalkan (INVALID_STATUS_TRANSITION) */
             409: {
                 headers: {
                     [name: string]: unknown;

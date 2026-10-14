@@ -94,6 +94,9 @@ export default function CustomerTracking() {
   const [pickupAddress, setPickupAddress] = useState<string>('');
   const [dropoffAddress, setDropoffAddress] = useState<string>('');
   const [autoFollow, setAutoFollow] = useState(true);
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!orderId) return;
@@ -282,6 +285,29 @@ export default function CustomerTracking() {
 
   const tripDuration = formatTripDuration(order.durationS);
   const arrivalTime = inTransitArrival(order.status, history, order.durationS);
+
+  const canCancel = order.status === 'PENDING' || order.status === 'DRIVER_ASSIGNED';
+
+  const handleCancelOrder = async () => {
+    if (!orderId) return;
+    setCancelling(true);
+    setCancelError(null);
+    try {
+      const { data, error: apiError } = await apiClient.POST('/orders/{id}/cancel', {
+        params: { path: { id: orderId } },
+      });
+      if (apiError || !data) {
+        throw apiError;
+      }
+      setOrder(data);
+      setHistory(data.history ?? []);
+      setCancelModalOpen(false);
+    } catch {
+      setCancelError('Gagal membatalkan pesanan. Coba lagi.');
+    } finally {
+      setCancelling(false);
+    }
+  };
 
   return (
     <div className="relative w-full h-[calc(100vh-64px)] overflow-hidden bg-surface-container-low">
@@ -472,8 +498,51 @@ export default function CustomerTracking() {
               Kembali ke Beranda
             </button>
           )}
+
+          {canCancel && (
+            <button
+              onClick={() => setCancelModalOpen(true)}
+              disabled={cancelling}
+              className="w-full mt-4 h-12 bg-[#FEF2F2] text-[#7F1D1D] border border-[#FECACA] text-[16px] font-bold rounded-full hover:bg-[#FECACA]/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Batalkan Pesanan
+            </button>
+          )}
+          {cancelError && (
+            <p className="mt-2 text-[13px] text-center text-[#7F1D1D]">{cancelError}</p>
+          )}
         </div>
       </div>
+
+      {/* Modal konfirmasi pembatalan */}
+      {cancelModalOpen && (
+        <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-sm bg-surface-container-lowest rounded-[24px] shadow-level-3 p-6 text-center">
+            <h3 className="text-[18px] font-bold text-on-surface mb-2">
+              Batalkan pesanan ini?
+            </h3>
+            <p className="text-[14px] text-on-surface-variant mb-6">
+              Pesanan yang sudah dibatalkan tidak dapat dikembalikan.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setCancelModalOpen(false)}
+                disabled={cancelling}
+                className="flex-1 h-12 bg-surface-container-high text-on-surface text-[15px] font-bold rounded-full hover:bg-surface-container-highest transition-all disabled:opacity-50"
+              >
+                Tidak
+              </button>
+              <button
+                onClick={handleCancelOrder}
+                disabled={cancelling}
+                className="flex-1 h-12 bg-[#7F1D1D] text-white text-[15px] font-bold rounded-full hover:bg-[#7F1D1D]/90 transition-all disabled:opacity-50"
+              >
+                {cancelling ? 'Membatalkan...' : 'Ya, Batalkan'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

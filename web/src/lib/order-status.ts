@@ -46,8 +46,8 @@ export const ORDER_STATUS_MAP: Record<string, OrderStatusInfo> = {
     label: 'Pesanan Dibatalkan',
     customerDescription: 'Pesanan ini telah dibatalkan',
     driverDescription: 'Pesanan dibatalkan',
-    badgeClass: 'bg-[#FEF2F2] text-[#7F1D1D] border border-[#FECACA]',
-    dotColor: '#EF4444',
+    badgeClass: 'bg-[#F3F4F6] text-[#374151] border border-[#E5E7EB]',
+    dotColor: '#9CA3AF',
   },
 };
 

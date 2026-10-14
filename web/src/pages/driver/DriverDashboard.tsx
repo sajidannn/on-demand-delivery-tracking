@@ -62,6 +62,7 @@ export default function DriverDashboard() {
   });
   const [pickupAddress, setPickupAddress] = useState<string>('');
   const [dropoffAddress, setDropoffAddress] = useState<string>('');
+  const [toast, setToast] = useState<string | null>(null);
 
   const getCurrentLocation = (): Promise<{ lat: number; lng: number }> => {
     return new Promise((resolve, reject) => {
@@ -83,7 +84,9 @@ export default function DriverDashboard() {
         setError(String(apiError.message || 'Gagal memuat pesanan'));
       } else if (data) {
         const activeOrders = Array.isArray(data)
-          ? data.filter((o) => o.status !== 'COMPLETED')
+          ? data.filter(
+              (o) => o.status !== 'COMPLETED' && o.status !== 'CANCELLED',
+            )
           : [];
         setOrders(activeOrders);
 
@@ -144,6 +147,19 @@ export default function DriverDashboard() {
         },
       );
 
+      // Notifikasi pembatalan order oleh customer
+      socket.on('order:status', (payload: { orderId: string; status: string }) => {
+        if (payload.status === 'CANCELLED') {
+          setOrders((prev) => {
+            const stillHeld = prev.some((o) => o.id === payload.orderId);
+            if (stillHeld) {
+              setToast('Order dibatalkan oleh customer');
+            }
+            return prev.filter((o) => o.id !== payload.orderId);
+          });
+        }
+      });
+
       // Watch GPS Location
       watchId = navigator.geolocation.watchPosition(
         (pos) => {
@@ -151,7 +167,6 @@ export default function DriverDashboard() {
           const lng = pos.coords.longitude;
           const newCoord: [number, number] = [lat, lng];
           setDriverLocation({ lat, lng });
-
           // Catat riwayat jejak perjalanan
           setTraveledPath((prev) => {
             if (prev.length > 0) {
@@ -189,6 +204,13 @@ export default function DriverDashboard() {
       if (socket) socket.disconnect();
     };
   }, [isOnline, orders]);
+
+  // oxlint-disable-next-line react/no-set-state-in-render-effect -- auto-hide toast
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 4000);
+    return () => clearTimeout(t);
+  }, [toast]);
 
   const toggleOnline = async () => {
     setIsUpdating(true);
@@ -320,6 +342,11 @@ export default function DriverDashboard() {
         {error && (
           <div className="bg-error-container text-on-error-container p-4 rounded-[16px] text-[14px] shadow-level-2">
             {error}
+          </div>
+        )}
+        {toast && (
+          <div className="bg-on-surface text-surface p-4 rounded-[16px] text-[14px] shadow-level-3">
+            {toast}
           </div>
         )}
         <div className="bg-surface-container-lowest rounded-[24px] shadow-level-3 p-5 sm:p-6 border border-surface-container">

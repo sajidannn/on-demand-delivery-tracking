@@ -22,6 +22,10 @@ export class OsrmClient {
       const baseUrl = this.configService.get<string>('OSRM_URL', 'http://router.project-osrm.org');
       const profile = this.configService.get<string>('OSRM_PROFILE', 'driving');
       const timeoutMs = parseInt(this.configService.get<string>('OSRM_TIMEOUT_MS', '3000'), 10);
+      const userAgent = this.configService.get<string>(
+        'OSRM_USER_AGENT',
+        'UrbanSolv-DeliveryTracking/1.0',
+      );
 
       // OSRM requires lng,lat
       const coords = `${pickup.lng},${pickup.lat};${dropoff.lng},${dropoff.lat}`;
@@ -29,7 +33,7 @@ export class OsrmClient {
 
       const response = await fetch(url, {
         headers: {
-          'User-Agent': 'UrbanSolv-DeliveryTracking/1.0',
+          'User-Agent': userAgent,
         },
         signal: AbortSignal.timeout(timeoutMs),
       });

@@ -64,6 +64,7 @@ describe('Sesi Cookie & CSRF (e2e)', () => {
     expect(setCookie).toContain('HttpOnly');
     expect(setCookie).toContain('Path=/');
     expect(setCookie).toContain('SameSite=Lax');
+    expect(setCookie).toMatch(/Max-Age=\d+/i);
     expect(setCookie).not.toContain('Domain=');
     
     const tokenMatch = setCookie!.match(/access_token=([^;]+)/);
@@ -79,29 +80,40 @@ describe('Sesi Cookie & CSRF (e2e)', () => {
     const res = await api('/orders', {
       method: 'POST',
       cookie: cookieHeaderStr,
-      body: { pickup: { lat: 0, lng: 0 }, dropoff: { lat: 0, lng: 0 } },
+      body: {
+        pickup: { lat: -6.9147, lng: 107.6098 },
+        dropoff: { lat: -6.9200, lng: 107.6150 },
+      },
     });
     expect(res.status).toBe(403);
     expect((res.body as any).code).toBe('CSRF_HEADER_REQUIRED');
   });
 
-  it('POST dengan cookie + X-Requested-With sukses (atau setidaknya lolos auth/400)', async () => {
+  it('POST dengan cookie + X-Requested-With sukses membuat order (201)', async () => {
     const res = await api('/orders', {
       method: 'POST',
       cookie: cookieHeaderStr,
       csrf: true,
-      body: { pickup: { lat: 0, lng: 0 }, dropoff: { lat: 0, lng: 0 } },
+      body: {
+        pickup: { lat: -6.9147, lng: 107.6098 },
+        dropoff: { lat: -6.9200, lng: 107.6150 },
+      },
     });
-    expect([201, 400]).toContain(res.status);
+    expect(res.status).toBe(201);
+    expect((res.body as any).id).toBeDefined();
   });
 
-  it('POST dengan Bearer bebas CSRF', async () => {
+  it('POST dengan Bearer bebas CSRF dan sukses membuat order (201)', async () => {
     const res = await api('/orders', {
       method: 'POST',
       token: rawToken,
-      body: { pickup: { lat: 0, lng: 0 }, dropoff: { lat: 0, lng: 0 } },
+      body: {
+        pickup: { lat: -6.9147, lng: 107.6098 },
+        dropoff: { lat: -6.9200, lng: 107.6150 },
+      },
     });
-    expect([201, 400]).toContain(res.status);
+    expect(res.status).toBe(201);
+    expect((res.body as any).id).toBeDefined();
   });
 
   it('Preflight OPTIONS mengembalikan CORS credentials', async () => {

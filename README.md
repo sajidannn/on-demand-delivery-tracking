@@ -106,11 +106,15 @@ docker compose up -d          # PostgreSQL + PostGIS dan RabbitMQ
 bun install
 bun run db:generate:auth
 bun run db:migrate:all        # auth (Prisma), order dan location (TypeORM)
+cd web && bun install         # dependensi web frontend
+cd ..
 ```
 
 `docker/init.sql` (pembuatan database dan extension PostGIS) hanya berjalan saat volume Postgres pertama kali dibuat. Untuk mengulang dari nol: `docker compose down -v`.
 
 ## Menjalankan
+
+### 1. Menjalankan Backend Microservices
 
 Satu perintah untuk kelima service:
 
@@ -128,8 +132,33 @@ bunx nest start location-service --watch
 bunx nest start notification-service --watch
 ```
 
+### 2. Menjalankan Web Frontend (`web/`)
+
+Aplikasi web frontend (Customer & Driver SPA) dibangun dengan React + Vite + Leaflet:
+
+```bash
+# Dari root project:
+bun run web:dev
+
+# Atau masuk ke folder web/:
+cd web
+bun run dev
+```
+
+Buka browser di **`http://localhost:5173`**.
+- Vite mengarahkan proxy `/api` ke Gateway (`http://localhost:3000`) dan `/socket.io` ke WebSocket gateway.
+- Sesi login disimpan secara aman melalui cookie HttpOnly `access_token`.
+- Peta interaktif menampilkan rute nyata dari OSRM, pergerakan GPS driver, dan timeline riwayat status pesanan.
+
+Untuk build dan testing frontend:
+```bash
+bun run web:build          # build bundle produksi frontend
+cd web && bun run test     # menjalankan unit test frontend (Vitest)
+```
+
 | Komponen                   | Alamat                                        |
 | -------------------------- | --------------------------------------------- |
+| Web Frontend (SPA)         | `http://localhost:5173`                       |
 | Gateway (HTTP + WebSocket) | `http://localhost:3000`                       |
 | Swagger                    | `http://localhost:3000/docs`                  |
 | Auth (TCP)                 | `4001`                                        |
@@ -228,6 +257,7 @@ Contoh log Notification untuk AC-06:
 ```
 apps/
   gateway/ auth-service/ order-service/ location-service/ notification-service/
+web/                  # Frontend SPA (React, Leaflet, Tailwind CSS, Vite)
 libs/common/          # DTO, enum, konstanta, event, proto, util (tanpa entity ORM)
 docs/                 # PRD, SDD, TSD, rencana implementasi, ADR
 scripts/              # seed-drivers, demo WebSocket
@@ -239,8 +269,7 @@ docker/init.sql       # database dan extension PostGIS
 - Event RabbitMQ memakai `noAck` bawaan Nest (at-most-once di sisi consumer) dan publish best-effort tanpa outbox, jadi order bisa tersimpan tanpa event terkirim.
 - `ReleaseDriver` setelah `COMPLETED` best-effort; bila gagal, driver tetap terkunci sampai diperbaiki manual.
 - Room Socket.IO tersimpan di memori: hanya benar untuk satu instance Gateway (butuh Redis adapter bila di-scale).
-- Tidak ada pembayaran, tarif dinamis, retry saat driver menolak, atau refresh token. Tarif flat.
-- Jarak order dihitung garis lurus (`ST_Distance`), bukan rute jalan.
+- Tidak ada pembayaran atau multi-kendaraan; tarif dihitung dari formula jarak OSRM dinamis (dengan fallback garis lurus bila OSRM down).
 
 ## Troubleshooting
 
